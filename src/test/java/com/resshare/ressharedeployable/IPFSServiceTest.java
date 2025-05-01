@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
 
 import java.io.*;
-import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.*;
 
