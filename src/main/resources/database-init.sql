@@ -1,0 +1,6 @@
+DROP TABLE IF EXISTS users;
+
+CREATE TABLE users (
+    username TEXT PRIMARY KEY NOT NULL,
+    password TEXT NOT NULL
+);

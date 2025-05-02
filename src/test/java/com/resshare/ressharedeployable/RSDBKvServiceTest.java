@@ -12,7 +12,7 @@ public class RSDBKvServiceTest {
 
     @BeforeEach
     public void setUp() {
-        service = new RSDBKvService(); // 自动从 resources 中加载 config.conf
+        service = new RSDBKvService();
     }
 
     @Test
