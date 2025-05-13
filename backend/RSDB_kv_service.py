@@ -29,5 +29,5 @@ def get_kv(key: str) -> str:
     print(f"GETTING {key}")
     return pybind_kv.get("RESSHARE " + key, config_path)
 
-print(set_kv("test", "ttt"))
-print(get_kv("test"))
+# print(set_kv("test", "ttt"))
+# print(get_kv("test"))

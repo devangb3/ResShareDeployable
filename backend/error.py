@@ -1,0 +1,11 @@
+from enum import Enum
+
+class ErrorCode(Enum):
+    SUCCESS = 0
+    USER_EXISTS = 1
+    USER_NOT_FOUND = 2
+    INVALID_PASSWORD = 3
+    INCORRECT_PASSWORD = 4
+    INVALID_USERNAME = 5
+    ONLY_ACCEPT_FOLDER = 6
+    UNKNOWN_ERROR = 99
