@@ -14,11 +14,16 @@ root.add_child(f2)
 doc_dir.add_child(f1)
 root.add_child(doc_dir)
 
-sm = ShareManager()
+# root/doc/file_1
 
-sm.share("Kenny", "Devang", doc_dir)
-sm.receive("Devang", "aaa", doc_dir)
-print(sm.to_json())
+##
+# root/
+#   doc/
+#       file_1
+#   pic/
+#   file_2
+
+print(root.to_json())
 
 
 

@@ -38,8 +38,5 @@ def login(username, password):
     if hashed_password_from_rsdb != hashed_password_from_user:
         return ErrorCode.INCORRECT_PASSWORD
 
-    desensitized_root = Node.from_json(get_kv(username + " ROOT")).to_desensitized_json()
-    desensitized_sm = ShareManager.from_json(get_kv(username + " SHARE_MANAGER")).to_desensitized_json()
-
-    return [username, desensitized_root, desensitized_sm]
+    # TODO
 

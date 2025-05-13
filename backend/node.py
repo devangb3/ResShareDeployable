@@ -71,17 +71,3 @@ class Node:
     def from_json(cls, json_str):
         return cls.from_dict(json.loads(json_str))
 
-    def to_desensitized_dict(self):
-        data = {
-            "name": self.name,
-            "is_folder": self.is_folder
-        }
-        if self.is_folder:
-            data["children"] = [
-                {"name": child.name, "is_folder": child.is_folder}
-                for child in self.children.values()
-            ]
-        return data
-
-    def to_desensitized_json(self):
-        return json.dumps(self.to_desensitized_dict(), indent=2)
