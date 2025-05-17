@@ -1,10 +1,8 @@
 import os
 import sys
-
+from backend import pybind_kv
 config_path = "config/kv_service.config"
 
-# sys.path.append("bazel/bazel-bin/kv_service")
-import pybind_kv
 
 
 def set_kv(key: str, value: str):

@@ -3,9 +3,9 @@ import hashlib
 from backend.share_manager import ShareManager
 from backend.util import is_valid_password, is_valid_username
 
-from error import ErrorCode
-from RSDB_kv_service import get_kv, set_kv
-from node import Node
+from backend.error import ErrorCode
+from backend.RSDB_kv_service import get_kv, set_kv
+from backend.node import Node
 
 def sign_up(username, password):
     if get_kv(username).strip():

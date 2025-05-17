@@ -14,6 +14,7 @@ def login_required(f):
             return jsonify({'error': 'Not logged in'}), 401
         return f(*args, **kwargs)
     return decorated_function
+
 @app.route('/login', methods=['POST'])
 def login_route():
     data = request.get_json()
@@ -49,7 +50,7 @@ def delete_route():
     return
 
 
-@app.route('/upload', method=['POST'])
+@app.route('/upload', methods=['POST'])
 @login_required
 def upload_route():
     return
@@ -67,4 +68,5 @@ def logout_route():
     return
 
 
-
+if __name__ == '__main__':
+    app.run(debug=True)
