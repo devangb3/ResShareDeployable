@@ -11,16 +11,25 @@ class Node:
         self.children = {} if is_folder else None
         self.file_obj = file_obj if not is_folder else None
 
-    def add_child(self, child_node):
-        if not self.is_folder:
-            raise ValueError("Cannot add children to a file node")
-        self.children[child_node.name] = child_node
-
     def __repr__(self):
         if self.is_folder:
             return f"[DIR] {self.name}"
         else:
             return f"[FILE] {self.name} ({self.file_obj})"
+
+    def __eq__(self, other):
+        if not isinstance(other, Node):
+            return False
+        return (
+            self.name == other.name and
+            self.is_folder == other.is_folder and
+            self.file_obj == other.file_obj
+        )
+
+    def add_child(self, child_node):
+        if not self.is_folder:
+            raise ValueError("Cannot add children to a file node")
+        self.children[child_node.name] = child_node
 
     def find_node_by_path(self, path):
         parts = path.strip("/").split("/")
