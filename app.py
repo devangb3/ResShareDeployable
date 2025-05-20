@@ -1,3 +1,5 @@
+import json
+
 from flask import Flask, request, jsonify, session
 from functools import wraps
 
@@ -26,17 +28,29 @@ def login_route():
     if result == ErrorCode.SUCCESS:
         session['username'] = username
         root_json = get_kv(username + " ROOT")
+        root_json = json.loads(root_json)
+        share_list = get_kv(username + " SHARE_MANAGER")
+        share_list = json.loads(share_list)
         return jsonify({
             'result': result.name,
-            'root': root_json
+            'root': root_json,
+            'share_list': share_list
         }), 200
 
     return jsonify({'result': result.name}), 401
 
 @app.route('/signup', methods=['POST'])
 def signup_route():
-    return
+    data = request.get_json()
+    username = data['username']
+    password = data['password']
+    result = sign_up(username, password)
+    if result == ErrorCode.SUCCESS:
+        return jsonify({
+            'result': result.name
+        }), 200
 
+    return jsonify({'result': result.name}), 401
 
 @app.route('/create-folder', methods=['POST'])
 @login_required

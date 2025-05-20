@@ -18,8 +18,7 @@ def sign_up(username, password):
     hashed = hashlib.sha256(password.encode()).hexdigest()
     set_kv(username, hashed)
     set_kv(username + " ROOT", Node("root", True).to_json())
-    # set_kv(username + "SHARE_MANAGER", ShareManager().to_json())
-    # TODO
+    set_kv(username + " SHARE_MANAGER", ShareManager().to_json())
     return ErrorCode.SUCCESS
 
 def login(username, password):
