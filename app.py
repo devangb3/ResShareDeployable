@@ -1,10 +1,12 @@
 import json
+from uu import Error
 
 from flask import Flask, request, jsonify, session
 from functools import wraps
 
-from backend.RSDB_kv_service import get_kv
+from backend.RSDB_kv_service import get_kv, set_kv
 from backend.error import ErrorCode
+from backend.node import Node
 from backend.user_authentication_service import login, sign_up
 app = Flask(__name__)
 app.secret_key = "e9fdf1d445d445bb7d12df76043e3b74617cf78934a99353efb3a7eb826dfb01"
@@ -55,13 +57,65 @@ def signup_route():
 @app.route('/create-folder', methods=['POST'])
 @login_required
 def create_folder_route():
-    return
+    data = request.get_json()
+    folder_path = data.get('folder_path')
+    username = session['username']
+
+    if not folder_path or folder_path.strip("/") == "":
+        return jsonify({'result': ErrorCode.INVALID_PATH.name}), 400
+
+    parts = folder_path.strip("/").split("/")
+    folder_name = parts[-1]
+    parent_path = "/".join(parts[:-1])
+
+    root = Node.from_json(get_kv(username + " ROOT"))
+
+    parent_node = root.find_node_by_path(parent_path) if parent_path else root
+    if parent_node is None or not parent_node.is_folder:
+        return jsonify({'result': ErrorCode.INVALID_PATH.name}), 400
+
+    if folder_name in parent_node.children:
+        return jsonify({'result': ErrorCode.DUPLICATE_NAME.name}), 409
+
+    new_folder = Node(name=folder_name, is_folder=True)
+    parent_node.add_child(new_folder)
+
+    set_kv(username + " ROOT", root.to_json())
+
+    return jsonify({'result': ErrorCode.SUCCESS.name,
+                    'root': root.to_json()}), 201
 
 
 @app.route('/delete', methods=['DELETE'])
 @login_required
 def delete_route():
-    return
+    data = request.get_json()
+    node_path = data['node_path']
+    username = session['username']
+
+    root = Node.from_json(get_kv(username + " ROOT"))
+
+    if node_path.strip("/") == "":
+        return jsonify({'error': ErrorCode.DELETE_ROOT_DIRECTORY}), 400
+
+    parts = node_path.strip("/").split("/")
+    node_name = parts[-1]
+    parent_path = "/".join(parts[:-1])
+
+    parent_node = root.find_node_by_path(parent_path) if parent_path else root
+
+    if parent_node is None or not parent_node.is_folder:
+        return jsonify({'error': ErrorCode.INVALID_PATH}), 400
+
+    if node_name not in parent_node.children:
+        return jsonify({'error': ErrorCode.NODE_NOT_FOUND}), 404
+
+    del parent_node.children[node_name]
+
+    set_kv(username + " ROOT", root.to_json())
+
+    return jsonify({'message': ErrorCode.SUCCESS,
+                    'root': root.to_json()}), 200
 
 
 @app.route('/upload', methods=['POST'])
@@ -79,8 +133,20 @@ def share_route():
 @app.route('/logout', methods=['POST'])
 @login_required
 def logout_route():
+    session.pop('username', None)
+    return jsonify({'message': ErrorCode.SUCCESS}), 200
+
+
+@app.route('/upload', methods=['POST'])
+@login_required
+def upload_route():
     return
 
+
+@app.route('/download', methods=['POST'])
+@login_required
+def download_route():
+    return
 
 if __name__ == '__main__':
     app.run(debug=True)
