@@ -14,7 +14,6 @@ def sign_up(username, password):
         return ErrorCode.INVALID_USERNAME
     if not is_valid_password(password):
         return ErrorCode.INVALID_PASSWORD
-
     hashed = hashlib.sha256(password.encode()).hexdigest()
     set_kv(username, hashed)
     set_kv(username + " ROOT", Node("root", True).to_json())
