@@ -28,5 +28,3 @@ def login(username, password):
     if stored != hashed:
         return ErrorCode.INCORRECT_PASSWORD
     return ErrorCode.SUCCESS
-
-

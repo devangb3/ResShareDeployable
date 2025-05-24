@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 
+from backend.error import ErrorCode
 from backend.file import File
 
 
@@ -28,11 +29,20 @@ class Node:
 
     def add_child(self, child_node):
         if not self.is_folder:
-            raise ValueError("Cannot add children to a file node")
+            return ErrorCode.ADD_CHILD_TO_FILE_NODE
+
+        if child_node.name in self.children:
+            return ErrorCode.DUPLICATE_NAME
+
         self.children[child_node.name] = child_node
+        return ErrorCode.SUCCESS
 
     def find_node_by_path(self, path):
         parts = path.strip("/").split("/")
+
+        if parts and parts[0] == self.name:
+            parts = parts[1:]
+
         node = self
         for part in parts:
             if not node.is_folder or part not in node.children:

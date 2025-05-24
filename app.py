@@ -1,15 +1,20 @@
 import hashlib
 import json
 from uu import Error
+from io import BytesIO
 
 from flask import Flask, request, jsonify, session
 from functools import wraps
 
 from backend.RSDB_kv_service import get_kv, set_kv
 from backend.error import ErrorCode
+from backend.ipfs import add_file_to_cluster
 from backend.node import Node
 from backend.share_manager import ShareManager
 from backend.user_authentication_service import login, sign_up
+from backend.file import File
+
+FILE_SIZE_LIMIT = 500 * 1024 * 1024
 app = Flask(__name__)
 app.secret_key = "e9fdf1d445d445bb7d12df76043e3b74617cf78934a99353efb3a7eb826dfb01"
 
@@ -174,7 +179,48 @@ def logout_route():
 @app.route('/upload', methods=['POST'])
 @login_required
 def upload_route():
-    return
+    """
+    if user want to upload example.txt to path root/doc/example.txt. The path part in request should be root/doc
+    """
+    if 'file' not in request.files:
+        return jsonify({'message': ErrorCode.INVALID_REQUEST}), 400
+
+    if 'path' not in request.form:
+        return jsonify({'message': ErrorCode.INVALID_REQUEST}), 400
+
+    path = request.form['path']
+    username = session['username']
+    file = request.files['file']
+
+    if file.filename == '':
+        return jsonify({'message': ErrorCode.INVALID_REQUEST}), 400
+
+    filename = file.filename
+    file_stream = BytesIO(file.read())
+
+    file_size = file_stream.getbuffer().nbytes
+
+    if file_size > FILE_SIZE_LIMIT:
+        return jsonify({'message': ErrorCode.EXCEED_MAX_FILE_SIZE}), 413
+
+    cid = add_file_to_cluster(file_stream, filename)
+
+    if cid is None:
+        return jsonify({'message': ErrorCode.IPFS_ERROR}), 500
+
+    root = Node.from_json(get_kv(username + " ROOT"))
+    target_node = root.find_node_by_path(path)
+
+    if target_node is None:
+        return jsonify({'message': ErrorCode.NODE_NOT_FOUND}), 404
+
+    result = target_node.add_child(Node(filename, False, file_obj=File(cid, file_size, filename)))
+
+    if result != ErrorCode.SUCCESS:
+        return jsonify({'message': ErrorCode.ADD_CHILD_TO_FILE_NODE}), 400
+
+    return jsonify({'message': ErrorCode.SUCCESS, 'root': root.to_json()}), 200
+
 
 
 @app.route('/download', methods=['POST'])
