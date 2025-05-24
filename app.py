@@ -119,12 +119,6 @@ def delete_route():
                     'root': root.to_json()}), 200
 
 
-@app.route('/upload', methods=['POST'])
-@login_required
-def upload_route():
-    return
-
-
 @app.route('/share', methods=['POST'])
 @login_required
 def share_route():
