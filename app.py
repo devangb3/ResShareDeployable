@@ -7,6 +7,7 @@ from functools import wraps
 from backend.RSDB_kv_service import get_kv, set_kv
 from backend.error import ErrorCode
 from backend.node import Node
+from backend.share_manager import ShareManager
 from backend.user_authentication_service import login, sign_up
 app = Flask(__name__)
 app.secret_key = "e9fdf1d445d445bb7d12df76043e3b74617cf78934a99353efb3a7eb826dfb01"
@@ -127,7 +128,28 @@ def upload_route():
 @app.route('/share', methods=['POST'])
 @login_required
 def share_route():
-    return
+    data = request.get_json()
+    username = session['username']
+    target_username = data['target']
+    node = data['node']
+    node = Node.from_json(node)
+    if node.name == "root":
+        return jsonify({'message': ErrorCode.SHARE_ROOT})
+
+    target_sm = get_kv(target_username + " SHARE_MANAGER")
+    if target_sm == "\n" or target_sm == "" or target_sm == " ":
+        return jsonify({'message': ErrorCode.INVALID_USERNAME})
+
+    target_sm = ShareManager.from_json(target_sm)
+    result = target_sm.receive(username, node)
+    if result != ErrorCode.SUCCESS:
+        return jsonify({'message': result})
+
+    set_kv(target_username + " SHARE_MANAGER", target_sm.to_json())
+
+    return jsonify({'message': ErrorCode.SUCCESS})
+
+
 
 
 @app.route('/logout', methods=['POST'])

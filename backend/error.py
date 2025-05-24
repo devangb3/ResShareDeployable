@@ -14,4 +14,5 @@ class ErrorCode(Enum):
     INVALID_PATH = 10
     NODE_NOT_FOUND = 11
     DELETE_ROOT_DIRECTORY = 12
+    SHARE_ROOT = 13
     UNKNOWN_ERROR = 99
