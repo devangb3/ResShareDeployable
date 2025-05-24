@@ -219,6 +219,8 @@ def upload_route():
     if result != ErrorCode.SUCCESS:
         return jsonify({'message': ErrorCode.ADD_CHILD_TO_FILE_NODE}), 400
 
+    set_kv(username + " ROOT", root.to_json())
+
     return jsonify({'message': ErrorCode.SUCCESS, 'root': root.to_json()}), 200
 
 
