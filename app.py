@@ -1,3 +1,4 @@
+import hashlib
 import json
 from uu import Error
 
@@ -144,7 +145,24 @@ def share_route():
     return jsonify({'message': ErrorCode.SUCCESS})
 
 
+@app.route('/delete-user', methods=['DELETE'])
+@login_required
+def delete_user_route():
+    data = request.get_json()
+    username = session['username']
+    password = data['password']
+    hashed_password = hashlib.sha256(password.encode()).hexdigest()
 
+    if hashed_password != get_kv(username):
+        return jsonify({'message': ErrorCode.INCORRECT_PASSWORD})
+
+    set_kv(username, "\n")
+    set_kv(username + " ROOT", "\n")
+    set_kv(username + " SHARE_MANAGER", "\n")
+
+    session.pop(username)
+
+    return jsonify({'message': ErrorCode.SUCCESS})
 
 @app.route('/logout', methods=['POST'])
 @login_required

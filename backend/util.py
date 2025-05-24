@@ -29,3 +29,4 @@ def is_valid_username(username: str) -> bool:
     if username.isdigit():  # 全是数字
         return False
     return True
+
