@@ -129,20 +129,20 @@ def share_route():
     node = data['node']
     node = Node.from_json(node)
     if node.name == "root":
-        return jsonify({'message': ErrorCode.SHARE_ROOT})
+        return jsonify({'message': ErrorCode.SHARE_ROOT.name}), 400
 
     target_sm = get_kv(target_username + " SHARE_MANAGER")
     if target_sm == "\n" or target_sm == "" or target_sm == " ":
-        return jsonify({'message': ErrorCode.INVALID_USERNAME})
+        return jsonify({'message': ErrorCode.INVALID_USERNAME.name}), 400
 
     target_sm = ShareManager.from_json(target_sm)
     result = target_sm.receive(username, node)
     if result != ErrorCode.SUCCESS:
-        return jsonify({'message': result})
+        return jsonify({'message': result.name}), 400
 
     set_kv(target_username + " SHARE_MANAGER", target_sm.to_json())
 
-    return jsonify({'message': ErrorCode.SUCCESS})
+    return jsonify({'message': ErrorCode.SUCCESS}), 200
 
 
 @app.route('/delete-user', methods=['DELETE'])
@@ -154,7 +154,7 @@ def delete_user_route():
     hashed_password = hashlib.sha256(password.encode()).hexdigest()
 
     if hashed_password != get_kv(username):
-        return jsonify({'message': ErrorCode.INCORRECT_PASSWORD})
+        return jsonify({'message': ErrorCode.INCORRECT_PASSWORD.name}), 401
 
     set_kv(username, "\n")
     set_kv(username + " ROOT", "\n")
@@ -162,7 +162,7 @@ def delete_user_route():
 
     session.pop(username)
 
-    return jsonify({'message': ErrorCode.SUCCESS})
+    return jsonify({'message': ErrorCode.SUCCESS.name}), 200
 
 @app.route('/logout', methods=['POST'])
 @login_required
