@@ -65,6 +65,8 @@ def signup_route():
 @login_required
 def create_folder_route():
     data = request.get_json()
+    if 'folder_path' not in data:
+        return jsonify({'result': ErrorCode.INVALID_REQUEST.name}), 400
     folder_path = data.get('folder_path')
     username = session['username']
 
@@ -97,13 +99,15 @@ def create_folder_route():
 @login_required
 def delete_route():
     data = request.get_json()
+    if 'node_path' not in data:
+        return jsonify({'error': ErrorCode.INVALID_REQUEST.name}), 400
     node_path = data['node_path']
     username = session['username']
 
     root = Node.from_json(get_kv(username + " ROOT"))
 
     if node_path.strip("/") == "":
-        return jsonify({'error': ErrorCode.DELETE_ROOT_DIRECTORY}), 400
+        return jsonify({'error': ErrorCode.DELETE_ROOT_DIRECTORY.name}), 400
 
     parts = node_path.strip("/").split("/")
     node_name = parts[-1]
@@ -112,16 +116,16 @@ def delete_route():
     parent_node = root.find_node_by_path(parent_path) if parent_path else root
 
     if parent_node is None or not parent_node.is_folder:
-        return jsonify({'error': ErrorCode.INVALID_PATH}), 400
+        return jsonify({'error': ErrorCode.INVALID_PATH.name}), 400
 
     if node_name not in parent_node.children:
-        return jsonify({'error': ErrorCode.NODE_NOT_FOUND}), 404
+        return jsonify({'error': ErrorCode.NODE_NOT_FOUND.name}), 404
 
     del parent_node.children[node_name]
 
     set_kv(username + " ROOT", root.to_json())
 
-    return jsonify({'message': ErrorCode.SUCCESS,
+    return jsonify({'message': ErrorCode.SUCCESS.name,
                     'root': root.to_json()}), 200
 
 
@@ -129,6 +133,8 @@ def delete_route():
 @login_required
 def share_route():
     data = request.get_json()
+    if 'target' not in data or 'node' not in data:
+        return jsonify({'message': ErrorCode.INVALID_REQUEST.name}), 400
     username = session['username']
     target_username = data['target']
     node = data['node']
@@ -147,7 +153,7 @@ def share_route():
 
     set_kv(target_username + " SHARE_MANAGER", target_sm.to_json())
 
-    return jsonify({'message': ErrorCode.SUCCESS}), 200
+    return jsonify({'message': ErrorCode.SUCCESS.name}), 200
 
 
 @app.route('/delete-user', methods=['DELETE'])
@@ -217,11 +223,11 @@ def upload_route():
     result = target_node.add_child(Node(filename, False, file_obj=File(cid, file_size, filename)))
 
     if result != ErrorCode.SUCCESS:
-        return jsonify({'message': ErrorCode.ADD_CHILD_TO_FILE_NODE}), 400
+        return jsonify({'message': result.name}), 400
 
     set_kv(username + " ROOT", root.to_json())
 
-    return jsonify({'message': ErrorCode.SUCCESS, 'root': root.to_json()}), 200
+    return jsonify({'message': ErrorCode.SUCCESS.name, 'root': root.to_json()}), 200
 
 
 

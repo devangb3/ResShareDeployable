@@ -14,6 +14,7 @@ class ShareManager:
         if node in self.share_list[from_username]:
             return ErrorCode.ALREADY_SHARED
         self.share_list[from_username].append(node)
+        return ErrorCode.SUCCESS
 
     def to_dict(self):
         return {
