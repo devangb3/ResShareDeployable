@@ -19,4 +19,5 @@ class ErrorCode(Enum):
     ADD_CHILD_TO_FILE_NODE = 15
     IPFS_ERROR = 16
     EXCEED_MAX_FILE_SIZE = 17
+    FILE_NOT_FOUND = 18
     UNKNOWN_ERROR = 99

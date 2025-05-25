@@ -3,14 +3,15 @@ import json
 from uu import Error
 from io import BytesIO
 
-from flask import Flask, request, jsonify, session
+from flask import Flask, request, jsonify, session, send_file
 from functools import wraps
 
 from backend.RSDB_kv_service import get_kv, set_kv
 from backend.error import ErrorCode
-from backend.ipfs import add_file_to_cluster
+from backend.ipfs import add_file_to_cluster, download_file_from_ipfs
 from backend.node import Node
 from backend.share_manager import ShareManager
+from backend.test import target_node
 from backend.user_authentication_service import login, sign_up
 from backend.file import File
 
@@ -234,7 +235,34 @@ def upload_route():
 @app.route('/download', methods=['POST'])
 @login_required
 def download_route():
-    return
+    data = request.get_json()
+    if not data or 'path' not in data:
+        return jsonify({'message': ErrorCode.INVALID_PATH}), 400
+
+    path = data['path']
+    username = session['username']
+
+    root = Node.from_json(get_kv(username + " ROOT"))
+    target_node = root.find_node_by_path(path)
+
+    if target_node is None or target_node.is_folder:
+        return jsonify({'message': ErrorCode.NODE_NOT_FOUND}), 404
+
+    file_obj = target_node.file_obj
+    if not file_obj:
+        return jsonify({'message': ErrorCode.FILE_NOT_FOUND}), 404
+
+    file_content = download_file_from_ipfs(file_obj.cid)
+    if file_content is None:
+        return jsonify({'message': ErrorCode.IPFS_ERROR}), 500
+
+    return send_file(
+        BytesIO(file_content),
+        mimetype='application/octet-stream',
+        as_attachment=True,
+        download_name=file_obj.filename
+    )
+
 
 if __name__ == '__main__':
     app.run(debug=True)
