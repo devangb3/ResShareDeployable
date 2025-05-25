@@ -11,7 +11,6 @@ from backend.error import ErrorCode
 from backend.ipfs import add_file_to_cluster, download_file_from_ipfs
 from backend.node import Node
 from backend.share_manager import ShareManager
-from backend.test import target_node
 from backend.user_authentication_service import login, sign_up
 from backend.file import File
 
@@ -139,7 +138,10 @@ def share_route():
     username = session['username']
     target_username = data['target']
     node = data['node']
-    node = Node.from_json(node)
+    try:
+        node = Node.from_json(node)
+    except json.JSONDecodeError:
+        return jsonify({'message': "Failed to parse the JSON"}), 400
     if node.name == "root":
         return jsonify({'message': ErrorCode.SHARE_ROOT.name}), 400
 
@@ -237,7 +239,7 @@ def upload_route():
 def download_route():
     data = request.get_json()
     if not data or 'path' not in data:
-        return jsonify({'message': ErrorCode.INVALID_PATH}), 400
+        return jsonify({'message': ErrorCode.INVALID_PATH.name}), 400
 
     path = data['path']
     username = session['username']
@@ -246,18 +248,18 @@ def download_route():
     target_node = root.find_node_by_path(path)
 
     if target_node is None or target_node.is_folder:
-        return jsonify({'message': ErrorCode.NODE_NOT_FOUND}), 404
+        return jsonify({'message': ErrorCode.NODE_NOT_FOUND.name}), 404
 
     file_obj = target_node.file_obj
     if not file_obj:
-        return jsonify({'message': ErrorCode.FILE_NOT_FOUND}), 404
+        return jsonify({'message': ErrorCode.FILE_NOT_FOUND.name}), 404
 
     file_content = download_file_from_ipfs(file_obj.cid)
-    if file_content is None:
-        return jsonify({'message': ErrorCode.IPFS_ERROR}), 500
-
+    if not file_content or not file_content.get("success"):
+        return jsonify({'message': ErrorCode.IPFS_ERROR.name if file_content is None else file_content.get('message', ErrorCode.IPFS_ERROR.name)}), 500
+    
     return send_file(
-        BytesIO(file_content),
+        file_content["file"].getvalue(),
         mimetype='application/octet-stream',
         as_attachment=True,
         download_name=file_obj.filename
