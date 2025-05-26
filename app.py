@@ -22,7 +22,7 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'username' not in session:
-            return jsonify({'error': 'Not logged in'}), 401
+            return jsonify({'message': ErrorCode.NOT_LOGGED_IN}), 401
         return f(*args, **kwargs)
     return decorated_function
 
@@ -100,33 +100,56 @@ def create_folder_route():
 def delete_route():
     data = request.get_json()
     if 'node_path' not in data:
-        return jsonify({'error': ErrorCode.INVALID_REQUEST.name}), 400
+        return jsonify({'message': ErrorCode.INVALID_REQUEST.name}), 400
+
+    if 'delete_in_root' not in data:
+        return jsonify({'message': ErrorCode.INVALID_REQUEST}), 400
     node_path = data['node_path']
     username = session['username']
+    is_root = data['delete_in_root']
 
-    root = Node.from_json(get_kv(username + " ROOT"))
+    if is_root:
+        root = Node.from_json(get_kv(username + " ROOT"))
 
-    if node_path.strip("/") == "":
-        return jsonify({'error': ErrorCode.DELETE_ROOT_DIRECTORY.name}), 400
+        if node_path.strip("/") == "":
+            return jsonify({'message': ErrorCode.DELETE_ROOT_DIRECTORY.name}), 400
 
-    parts = node_path.strip("/").split("/")
-    node_name = parts[-1]
-    parent_path = "/".join(parts[:-1])
+        parts = node_path.strip("/").split("/")
+        node_name = parts[-1]
+        parent_path = "/".join(parts[:-1])
 
-    parent_node = root.find_node_by_path(parent_path) if parent_path else root
+        parent_node = root.find_node_by_path(parent_path) if parent_path else root
 
-    if parent_node is None or not parent_node.is_folder:
-        return jsonify({'error': ErrorCode.INVALID_PATH.name}), 400
+        if parent_node is None or not parent_node.is_folder:
+            return jsonify({'message': ErrorCode.INVALID_PATH.name}), 400
 
-    if node_name not in parent_node.children:
-        return jsonify({'error': ErrorCode.NODE_NOT_FOUND.name}), 404
+        if node_name not in parent_node.children:
+            return jsonify({'message': ErrorCode.NODE_NOT_FOUND.name}), 404
 
-    del parent_node.children[node_name]
+        del parent_node.children[node_name]
 
-    set_kv(username + " ROOT", root.to_json())
+        set_kv(username + " ROOT", root.to_json())
 
-    return jsonify({'message': ErrorCode.SUCCESS.name,
-                    'root': root.to_json()}), 200
+        return jsonify({'message': ErrorCode.SUCCESS,
+                        'root': root.to_json()}), 200
+    else:
+        share_json = get_kv(username + " SHARE_MANAGER")
+        share_manager = ShareManager.from_json(share_json)
+
+        target_node = share_manager.find_node_by_path(node_path)
+        if target_node is None:
+            return jsonify({'message': ErrorCode.NODE_NOT_FOUND.name}), 404
+
+        from_user = node_path.strip("/").split("/")[0]
+
+        result = share_manager.delete(from_user, target_node)
+        set_kv(username + " SHARE_MANAGER", share_manager.to_json())
+
+        return jsonify({'message': result.name,
+                        'root': share_manager.to_json()}), 200
+
+
+
 
 
 @app.route('/share', methods=['POST'])

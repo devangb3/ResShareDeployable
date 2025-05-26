@@ -22,6 +22,24 @@ class ShareManager:
             for from_user, node_list in self.share_list.items()
         }
 
+    def find_node_by_path(self, path):
+        parts = path.strip("/").split("/")
+        if len(parts) < 2:
+            return None
+
+        from_user = parts[0]
+        sub_path = "/".join(parts[1:])
+
+        if from_user not in self.share_list:
+            return None
+
+        for root_node in self.share_list[from_user]:
+            result = root_node.find_node_by_path(sub_path)
+            if result:
+                return result
+
+        return None
+
     @classmethod
     def from_dict(cls, data):
         sm = cls()

@@ -20,4 +20,5 @@ class ErrorCode(Enum):
     IPFS_ERROR = 16
     EXCEED_MAX_FILE_SIZE = 17
     FILE_NOT_FOUND = 18
+    NOT_LOGGED_IN = 19
     UNKNOWN_ERROR = 99
