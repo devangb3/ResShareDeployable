@@ -248,7 +248,7 @@ const HomePage = () => {
 
       <Grid container spacing={3}>
         {/* Left Side - My Files and Shared With Me */}
-        <Grid item xs={20} md={9} lg={9}>
+        <Grid item size ={{xs: 20, sm:9}}>
           {/* My Files Section */}
           <Paper sx={{ p: 3, mb: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
@@ -294,7 +294,7 @@ const HomePage = () => {
         </Grid>
 
         {/* Right Side - Stats Cards */}
-        <Grid item xs={12} md={3} lg={3}>
+        <Grid item size ={{xs: 12, sm:3}}>
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <Paper
