@@ -42,3 +42,4 @@ __pycache__/
 *$py.class
 *.so
 *.pyc
+/frontend/node_modules/

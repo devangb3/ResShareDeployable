@@ -5,6 +5,7 @@ from io import BytesIO
 
 from flask import Flask, request, jsonify, session, send_file
 from functools import wraps
+from flask_cors import CORS
 
 from backend.RSDB_kv_service import get_kv, set_kv
 from backend.error import ErrorCode
@@ -16,6 +17,7 @@ from backend.file import File
 
 FILE_SIZE_LIMIT = 500 * 1024 * 1024
 app = Flask(__name__)
+CORS(app, supports_credentials=True, origins=['http://localhost:5997'])
 app.secret_key = "e9fdf1d445d445bb7d12df76043e3b74617cf78934a99353efb3a7eb826dfb01"
 
 def login_required(f):
@@ -107,6 +109,8 @@ def delete_route():
     node_path = data['node_path']
     username = session['username']
     is_root = data['delete_in_root']
+    if isinstance(is_root, str):
+        is_root = is_root.lower() == 'true'
 
     if is_root:
         root = Node.from_json(get_kv(username + " ROOT"))
@@ -130,7 +134,7 @@ def delete_route():
 
         set_kv(username + " ROOT", root.to_json())
 
-        return jsonify({'message': ErrorCode.SUCCESS,
+        return jsonify({'message': ErrorCode.SUCCESS.name,
                         'root': root.to_json()}), 200
     else:
         share_json = get_kv(username + " SHARE_MANAGER")
@@ -215,17 +219,17 @@ def upload_route():
     if user want to upload example.txt to path root/doc/example.txt. The path part in request should be root/doc
     """
     if 'file' not in request.files:
-        return jsonify({'message': ErrorCode.INVALID_REQUEST}), 400
+        return jsonify({'message': ErrorCode.INVALID_REQUEST.name}), 400
 
     if 'path' not in request.form:
-        return jsonify({'message': ErrorCode.INVALID_REQUEST}), 400
+        return jsonify({'message': ErrorCode.INVALID_REQUEST.name}), 400
 
     path = request.form['path']
     username = session['username']
     file = request.files['file']
 
     if file.filename == '':
-        return jsonify({'message': ErrorCode.INVALID_REQUEST}), 400
+        return jsonify({'message': ErrorCode.INVALID_REQUEST.name}), 400
 
     filename = file.filename
     file_stream = BytesIO(file.read())
@@ -233,18 +237,18 @@ def upload_route():
     file_size = file_stream.getbuffer().nbytes
 
     if file_size > FILE_SIZE_LIMIT:
-        return jsonify({'message': ErrorCode.EXCEED_MAX_FILE_SIZE}), 413
+        return jsonify({'message': ErrorCode.EXCEED_MAX_FILE_SIZE.name}), 413
 
     cid = add_file_to_cluster(file_stream, filename)
 
     if cid is None:
-        return jsonify({'message': ErrorCode.IPFS_ERROR}), 500
+        return jsonify({'message': ErrorCode.IPFS_ERROR.name}), 500
 
     root = Node.from_json(get_kv(username + " ROOT"))
     target_node = root.find_node_by_path(path)
 
     if target_node is None:
-        return jsonify({'message': ErrorCode.NODE_NOT_FOUND}), 404
+        return jsonify({'message': ErrorCode.NODE_NOT_FOUND.name}), 404
 
     result = target_node.add_child(Node(filename, False, file_obj=File(cid, file_size, filename)))
 
