@@ -22,8 +22,8 @@ import {
   TextField,
   Alert,
   Snackbar,
-  Tooltip,
   LinearProgress,
+  Tooltip,
 } from '@mui/material';
 import {
   Folder,
@@ -37,10 +37,19 @@ import {
   Delete,
   NavigateNext,
   Home,
-  CloudUpload,
+  Image,
+  PictureAsPdf,
+  Description,
+  Code,
+  Movie,
+  Audiotrack,
+  Archive,
+  TableChart,
+  Slideshow,
 } from '@mui/icons-material';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../App';
+import { fileAPI, utils } from '../utils/api';
 
 const FileExplorer = () => {
   const navigate = useNavigate();
@@ -170,20 +179,25 @@ const FileExplorer = () => {
     setUploadProgress(0);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('path', currentPath || '');
+      // Simulate upload progress for better UX
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return prev;
+          }
+          return prev + 10;
+        });
+      }, 200);
 
-      const response = await fetch('/upload', {
-        method: 'POST',
-        credentials: 'include',
-        body: formData,
-      });
+      const response = await fileAPI.uploadFile(file, currentPath || '');
+      
+      clearInterval(progressInterval);
+      setUploadProgress(100);
 
-      const data = await response.json();
-
-      if (response.ok && data.result === 'SUCCESS') {
-        setRootData(JSON.parse(data.root));
+      if (response.message === 'SUCCESS') {
+        // Update the root data with the new file
+        setRootData(JSON.parse(response.root));
         setSnackbar({
           open: true,
           message: 'File uploaded successfully!',
@@ -192,19 +206,20 @@ const FileExplorer = () => {
       } else {
         setSnackbar({
           open: true,
-          message: data.message || 'Failed to upload file',
+          message: response.message || 'Failed to upload file',
           severity: 'error',
         });
       }
     } catch (error) {
+      console.error('Upload error:', error);
       setSnackbar({
         open: true,
-        message: 'Network error. Please try again.',
+        message: error.message || 'Network error. Please try again.',
         severity: 'error',
       });
     } finally {
       setUploading(false);
-      setUploadProgress(0);
+      setTimeout(() => setUploadProgress(0), 1000);
       event.target.value = '';
     }
   };
@@ -344,6 +359,33 @@ const FileExplorer = () => {
     handleMenuClose();
   };
 
+  const getFileIcon = (filename) => {
+    const iconType = utils.getFileIcon(filename, false);
+    
+    switch (iconType) {
+      case 'image':
+        return <Image sx={{ fontSize: 48, color: 'primary.main' }} />;
+      case 'pdf':
+        return <PictureAsPdf sx={{ fontSize: 48, color: '#f44336' }} />;
+      case 'document':
+        return <Description sx={{ fontSize: 48, color: '#2196f3' }} />;
+      case 'spreadsheet':
+        return <TableChart sx={{ fontSize: 48, color: '#4caf50' }} />;
+      case 'presentation':
+        return <Slideshow sx={{ fontSize: 48, color: '#ff9800' }} />;
+      case 'code':
+        return <Code sx={{ fontSize: 48, color: '#9c27b0' }} />;
+      case 'archive':
+        return <Archive sx={{ fontSize: 48, color: '#795548' }} />;
+      case 'audio':
+        return <Audiotrack sx={{ fontSize: 48, color: '#e91e63' }} />;
+      case 'video':
+        return <Movie sx={{ fontSize: 48, color: '#00bcd4' }} />;
+      default:
+        return <InsertDriveFile sx={{ fontSize: 48, color: 'text.secondary' }} />;
+    }
+  };
+
   const renderItems = () => {
     if (!currentNode || !currentNode.children) {
       return (
@@ -379,55 +421,70 @@ const FileExplorer = () => {
             },
           }}
         >
-          <CardActionArea
-            onClick={() => handleItemClick(name, item)}
-            sx={{ height: '100%', p: 2, position: 'relative' }}
-          >
-            <IconButton
+          <Box sx={{ position: 'relative' }}>
+            <CardActionArea
+              onClick={() => handleItemClick(name, item)}
+              sx={{ height: '100%', p: 2 }}
+            >
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 2,
+                }}
+              >
+                {item.is_folder ? (
+                  <Folder sx={{ fontSize: 48, color: 'primary.main' }} />
+                ) : (
+                  getFileIcon(name)
+                )}
+                <Typography
+                  variant="subtitle1"
+                  align="center"
+                  sx={{
+                    fontWeight: 500,
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {name}
+                </Typography>
+                {!item.is_folder && item.file_obj && (
+                  <Chip
+                    label={`${(item.file_obj.size / 1024).toFixed(1)} KB`}
+                    size="small"
+                    variant="outlined"
+                  />
+                )}
+              </Box>
+            </CardActionArea>
+            <Box
               sx={{
                 position: 'absolute',
                 top: 8,
                 right: 8,
                 zIndex: 1,
               }}
-              onClick={(e) => handleMenuOpen(e, name, item)}
             >
-              <MoreVert />
-            </IconButton>
-            
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 2,
-                pt: 2,
-              }}
-            >
-              {item.is_folder ? (
-                <Folder sx={{ fontSize: 48, color: 'primary.main' }} />
-              ) : (
-                <InsertDriveFile sx={{ fontSize: 48, color: 'text.secondary' }} />
-              )}
-              <Typography
-                variant="subtitle1"
-                align="center"
-                sx={{
-                  fontWeight: 500,
-                  wordBreak: 'break-word',
-                }}
-              >
-                {name}
-              </Typography>
-              {!item.is_folder && item.file_obj && (
-                <Chip
-                  label={`${(item.file_obj.size / 1024).toFixed(1)} KB`}
+              <Tooltip title="More options">
+                <IconButton
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMenuOpen(e, name, item);
+                  }}
                   size="small"
-                  variant="outlined"
-                />
-              )}
+                  sx={{
+                    bgcolor: 'background.paper',
+                    '&:hover': {
+                      bgcolor: 'action.hover',
+                    },
+                  }}
+                >
+                  <MoreVert />
+                </IconButton>
+              </Tooltip>
             </Box>
-          </CardActionArea>
+          </Box>
         </Card>
       </Grid>
     ));

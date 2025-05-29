@@ -87,7 +87,6 @@ export const fileAPI = {
       credentials: 'include',
       body: formData,
     });
-    
     return handleResponse(response);
   },
 

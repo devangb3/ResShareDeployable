@@ -21,7 +21,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useThemeMode } from '../App';
-
+import { authAPI } from '../utils/api';
 const RegisterPage = () => {
   const navigate = useNavigate();
   const { darkMode } = useThemeMode();
@@ -71,26 +71,27 @@ const RegisterPage = () => {
     setError('');
 
     try {
-      const response = await fetch('/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: formData.username,
-          password: formData.password,
-        }),
-      });
+      const signupResponse = await authAPI.signup(formData.username, formData.password);
+      const signupData = await signupResponse.json();
 
-      const data = await response.json();
+      if (signupResponse.ok && signupData.result === 'SUCCESS') {
+        // Attempt to login after successful registration
+        const loginResponse = await authAPI.login(formData.username, formData.password);
+        const loginData = await loginResponse.json();
 
-      if (response.ok && data.result === 'SUCCESS') {
-        setSuccess('Account created successfully! Redirecting to login...');
-        setTimeout(() => {
-          navigate('/login');
-        }, 2000);
+        if (loginResponse.ok && loginData.result === 'SUCCESS') {
+          setSuccess('Account created and logged in successfully! Redirecting...');
+          setTimeout(() => {
+            navigate('/dashboard');
+          }, 1500);
+        } else {
+          setSuccess('Account created successfully! Please log in.');
+          setTimeout(() => {
+            navigate('/login');
+          }, 1500);
+        }
       } else {
-        setError(data.result || 'Registration failed');
+        setError(signupData.result || 'Registration failed');
       }
     } catch (error) {
       setError('Network error. Please try again.');

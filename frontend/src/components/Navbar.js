@@ -9,12 +9,9 @@ import {
   Box,
   Avatar,
   Tooltip,
-  Switch,
-  FormControlLabel,
 } from '@mui/material';
 import {
   CloudQueue,
-  AccountCircle,
   Brightness4,
   Brightness7,
   Home,
@@ -23,6 +20,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, useThemeMode } from '../App';
+import { authAPI } from '../utils/api';
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -41,10 +39,7 @@ const Navbar = () => {
   const handleLogout = async () => {
     try {
       // Call logout API
-      await fetch('/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
+      await authAPI.logout();
     } catch (error) {
       console.error('Logout error:', error);
     }

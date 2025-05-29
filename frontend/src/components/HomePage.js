@@ -18,6 +18,15 @@ import {
   ListItemText,
   IconButton,
   Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+  Snackbar,
+  Alert,
+  LinearProgress,
 } from '@mui/material';
 import {
   Add,
@@ -32,11 +41,17 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
+import { fileAPI, utils } from '../utils/api';
 
 const HomePage = () => {
   const navigate = useNavigate();
-  const { user, rootData, shareList } = useAuth();
+  const { user, rootData, shareList, setRootData } = useAuth();
   const [speedDialOpen, setSpeedDialOpen] = useState(false);
+  const [createFolderOpen, setCreateFolderOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
   const [stats, setStats] = useState({
     totalFiles: 0,
     totalFolders: 0,
@@ -90,15 +105,121 @@ const HomePage = () => {
   };
 
   const handleCreateFolder = () => {
-    // This would open a dialog to create a new folder
-    console.log('Create folder clicked');
+    setCreateFolderOpen(true);
     setSpeedDialOpen(false);
   };
 
+  const handleConfirmCreateFolder = async () => {
+    if (!newFolderName.trim()) {
+      setSnackbar({
+        open: true,
+        message: 'Folder name cannot be empty',
+        severity: 'error',
+      });
+      return;
+    }
+
+    const validationError = utils.validateFileName(newFolderName);
+    if (validationError) {
+      setSnackbar({
+        open: true,
+        message: validationError,
+        severity: 'error',
+      });
+      return;
+    }
+
+    try {
+      const response = await fileAPI.createFolder(newFolderName);
+      
+      if (response.result === 'SUCCESS') {
+        setRootData(JSON.parse(response.root));
+        setSnackbar({
+          open: true,
+          message: 'Folder created successfully!',
+          severity: 'success',
+        });
+        setCreateFolderOpen(false);
+        setNewFolderName('');
+      } else {
+        setSnackbar({
+          open: true,
+          message: response.result || 'Failed to create folder',
+          severity: 'error',
+        });
+      }
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error.message || 'Failed to create folder',
+        severity: 'error',
+      });
+    }
+  };
+
   const handleUploadFile = () => {
-    // This would open a file upload dialog
-    console.log('Upload file clicked');
+    // Trigger file input click
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.multiple = false;
+    fileInput.onchange = handleFileSelected;
+    fileInput.click();
     setSpeedDialOpen(false);
+  };
+
+  const handleFileSelected = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      // Simulate upload progress for better UX
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return prev;
+          }
+          return prev + 10;
+        });
+      }, 200);
+
+      const response = await fileAPI.uploadFile(file, '');
+      
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+
+      if (response.message === 'SUCCESS') {
+        setRootData(JSON.parse(response.root));
+        setSnackbar({
+          open: true,
+          message: 'File uploaded successfully!',
+          severity: 'success',
+        });
+      } else {
+        setSnackbar({
+          open: true,
+          message: response.message || 'Failed to upload file',
+          severity: 'error',
+        });
+      }
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error.message || 'Failed to upload file',
+        severity: 'error',
+      });
+    } finally {
+      setUploading(false);
+      setTimeout(() => setUploadProgress(0), 1000);
+      event.target.value = '';
+    }
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
   };
 
   const handleFolderClick = (folderName) => {
@@ -378,6 +499,76 @@ const HomePage = () => {
           />
         ))}
       </SpeedDial>
+
+      {/* Create Folder Dialog */}
+      <Dialog open={createFolderOpen} onClose={() => setCreateFolderOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Create New Folder</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Folder Name"
+            fullWidth
+            variant="outlined"
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                handleConfirmCreateFolder();
+              }
+            }}
+            helperText="Enter a name for the new folder"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setCreateFolderOpen(false);
+            setNewFolderName('');
+          }}>
+            Cancel
+          </Button>
+          <Button onClick={handleConfirmCreateFolder} variant="contained">
+            Create
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Upload Progress */}
+      {uploading && (
+        <Box
+          sx={{
+            position: 'fixed',
+            bottom: 90,
+            right: 24,
+            minWidth: 300,
+            bgcolor: 'background.paper',
+            borderRadius: 2,
+            boxShadow: 3,
+            p: 2,
+            zIndex: 1300,
+          }}
+        >
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            Uploading file...
+          </Typography>
+          <LinearProgress variant="determinate" value={uploadProgress} />
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+            {uploadProgress}% complete
+          </Typography>
+        </Box>
+      )}
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };
