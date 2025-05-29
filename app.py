@@ -285,8 +285,12 @@ def download_route():
     if not file_content or not file_content.get("success"):
         return jsonify({'message': ErrorCode.IPFS_ERROR.name if file_content is None else file_content.get('message', ErrorCode.IPFS_ERROR.name)}), 500
     
+    # Create a BytesIO object from the file content
+    file_stream = BytesIO(file_content["file"].getvalue())
+    file_stream.seek(0)
+    
     return send_file(
-        file_content["file"].getvalue(),
+        file_stream,
         mimetype='application/octet-stream',
         as_attachment=True,
         download_name=file_obj.filename

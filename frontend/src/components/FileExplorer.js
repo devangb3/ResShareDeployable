@@ -228,33 +228,72 @@ const FileExplorer = () => {
     try {
       const filePath = currentPath ? `${currentPath}/${fileName}` : fileName;
       
-      const response = await fetch('/download', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          path: filePath,
-        }),
-      });
+      const response = await fileAPI.downloadFile(filePath);
 
       if (response.ok) {
         const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
         
-        setSnackbar({
-          open: true,
-          message: 'File downloaded successfully!',
-          severity: 'success',
-        });
+        if ('showSaveFilePicker' in window) {
+          try {
+            const extension = fileName.split('.').pop();
+            const mimeType = blob.type || 'application/octet-stream';
+            
+            const handle = await window.showSaveFilePicker({
+              suggestedName: fileName,
+              types: [{
+                description: 'All Files',
+                accept: {
+                  [mimeType]: [`.${extension}`]
+                }
+              }]
+            });
+            
+            const writable = await handle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            
+            setSnackbar({
+              open: true,
+              message: 'File downloaded successfully!',
+              severity: 'success',
+            });
+          } catch (err) {
+            if (err.name !== 'AbortError') {
+              console.error('Error saving file:', err);
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = fileName;
+              document.body.appendChild(a);
+              a.click();
+              window.URL.revokeObjectURL(url);
+              document.body.removeChild(a);
+              
+              setSnackbar({
+                open: true,
+                message: 'File downloaded successfully!',
+                severity: 'success',
+              });
+            }
+          }
+        } else {
+          // Fallback for browsers that don't support File System Access API
+          console.log("No file system access API");
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+          
+          setSnackbar({
+            open: true,
+            message: 'File downloaded successfully!',
+            severity: 'success',
+          });
+        }
       } else {
         const data = await response.json();
         setSnackbar({
