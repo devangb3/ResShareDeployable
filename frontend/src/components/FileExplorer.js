@@ -316,21 +316,9 @@ const FileExplorer = () => {
     if (!shareUsername.trim() || !selectedItem) return;
 
     try {
-      const response = await fetch('/share', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          target: shareUsername,
-          node: JSON.stringify(selectedItem),
-        }),
-      });
+      const data = await fileAPI.shareItem(shareUsername, selectedItem);
 
-      const data = await response.json();
-
-      if (response.ok && data.message === 'SUCCESS') {
+      if (data.message === 'SUCCESS') {
         setSnackbar({
           open: true,
           message: 'Item shared successfully!',
@@ -348,7 +336,7 @@ const FileExplorer = () => {
     } catch (error) {
       setSnackbar({
         open: true,
-        message: 'Network error. Please try again.',
+        message: error.message || 'Network error. Please try again.',
         severity: 'error',
       });
     }
