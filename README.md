@@ -1,6 +1,6 @@
 # ResShare - Decentralized File Sharing Application
 
-ResShare is a decentralized file sharing application that allows users to securely store, share, and manage their files using IPFS (InterPlanetary File System) technology. The application provides a user-friendly interface for file management with features like folder creation, file sharing, and secure authentication.
+ResShare is a decentralized file sharing application that allows users to securely store, share, and manage their files using Resilient DB technology. The application provides a user-friendly interface for file management with features like folder creation, file sharing, and secure authentication.
 
 ## Features
 
@@ -84,7 +84,3 @@ The application will be available at:
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details. 
