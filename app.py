@@ -17,14 +17,14 @@ from backend.file import File
 
 FILE_SIZE_LIMIT = 500 * 1024 * 1024
 app = Flask(__name__)
-CORS(app, supports_credentials=True, origins=['http://localhost:5997'])
+CORS(app, supports_credentials=True, origins=['http://localhost:5997', 'http://127.0.0.1:5997'])
 app.secret_key = "e9fdf1d445d445bb7d12df76043e3b74617cf78934a99353efb3a7eb826dfb01"
 
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'username' not in session:
-            return jsonify({'message': ErrorCode.NOT_LOGGED_IN}), 401
+            return jsonify({'message': ErrorCode.NOT_LOGGED_IN.name}), 401
         return f(*args, **kwargs)
     return decorated_function
 
@@ -105,7 +105,7 @@ def delete_route():
         return jsonify({'message': ErrorCode.INVALID_REQUEST.name}), 400
 
     if 'delete_in_root' not in data:
-        return jsonify({'message': ErrorCode.INVALID_REQUEST}), 400
+        return jsonify({'message': ErrorCode.INVALID_REQUEST.name}), 400
     node_path = data['node_path']
     username = session['username']
     is_root = data['delete_in_root']

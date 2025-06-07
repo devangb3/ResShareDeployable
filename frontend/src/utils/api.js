@@ -108,14 +108,14 @@ export const fileAPI = {
     return response; // Return the response for blob handling
   },
 
-  deleteItem: async (nodePath) => {
+  deleteItem: async (nodePath, deleteInRoot) => {
     const response = await fetch(`${API_BASE_URL}/delete`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
       },
       credentials: 'include',
-      body: JSON.stringify({ node_path: nodePath }),
+      body: JSON.stringify({ node_path: nodePath, delete_in_root: deleteInRoot }),
     });
     
     return handleResponse(response);

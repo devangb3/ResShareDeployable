@@ -349,21 +349,9 @@ const FileExplorer = () => {
     try {
       const itemPath = currentPath ? `${currentPath}/${selectedItem.name}` : selectedItem.name;
       
-      const response = await fetch('/delete', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          node_path: itemPath,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.message === 'SUCCESS') {
-        setRootData(JSON.parse(data.root));
+      const response = await fileAPI.deleteItem(itemPath,true);
+      if (response.message === 'SUCCESS') {
+        setRootData(JSON.parse(response.root));
         setSnackbar({
           open: true,
           message: 'Item deleted successfully!',
@@ -372,7 +360,7 @@ const FileExplorer = () => {
       } else {
         setSnackbar({
           open: true,
-          message: data.error || 'Failed to delete item',
+          message: response.message || 'Failed to delete item',
           severity: 'error',
         });
       }
