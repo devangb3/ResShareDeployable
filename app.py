@@ -158,7 +158,7 @@ def delete_user_route():
 @login_required
 def logout_route():
     session.pop('username', None)
-    return jsonify({'message': ErrorCode.SUCCESS}), 200
+    return jsonify({'message': ErrorCode.SUCCESS.name}), 200
 
 
 @app.route('/upload', methods=['POST'])
@@ -239,7 +239,6 @@ def download_route():
     if not file_content or not file_content.get("success"):
         return jsonify({'message': ErrorCode.IPFS_ERROR.name if file_content is None else file_content.get('message', ErrorCode.IPFS_ERROR.name)}), 500
     
-    # Create a BytesIO object from the file content
     file_stream = BytesIO(file_content["file"].getvalue())
     file_stream.seek(0)
     

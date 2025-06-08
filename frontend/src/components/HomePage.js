@@ -64,6 +64,7 @@ const HomePage = () => {
   });
   const [selectedItem, setSelectedItem] = useState(null);
   const [menuAnchor, setMenuAnchor] = useState(null);
+  const fileInputRef = React.useRef(null);
 
   useEffect(() => {
     if (rootData) {
@@ -166,11 +167,9 @@ const HomePage = () => {
 
   const handleUploadFile = () => {
     // Trigger file input click
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.multiple = false;
-    fileInput.onchange = handleFileSelected;
-    fileInput.click();
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
     setSpeedDialOpen(false);
   };
 
@@ -221,7 +220,9 @@ const HomePage = () => {
     } finally {
       setUploading(false);
       setTimeout(() => setUploadProgress(0), 1000);
-      event.target.value = '';
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -233,9 +234,12 @@ const HomePage = () => {
     navigate(`/explorer/${folderName}`);
   };
 
-  const handleFileClick = (fileName) => {
-    // Handle file preview or download
-    console.log('File clicked:', fileName);
+  const handleFileClick = (fileName, item) => {
+    if (item.is_folder) {
+      handleFolderClick(fileName);
+    } else {
+      handleDownload({ name: fileName, ...item });
+    }
   };
 
   const handleMenuOpen = (event, item, isShared = false) => {
@@ -299,26 +303,31 @@ const HomePage = () => {
     handleMenuClose();
   };
 
-  const handleDownload = async () => {
-    if (!selectedItem) return;
+  const handleDownload = async (itemOrEvent) => {
+    // If it's an event from the menu, use selectedItem
+    const item = itemOrEvent?.target?.tagName ? selectedItem : itemOrEvent;
+    if (!item) return;
 
     try {
-      const filePath = selectedItem.isShared 
-        ? `${selectedItem.sharedBy}/${selectedItem.name}`
-        : selectedItem.name;
-
-      const response = await fileAPI.downloadFile(filePath, selectedItem.isShared);
+      console.log("item", item);
+      // Check if the item is from shared items section
+      const isShared = item.sharedBy !== undefined;
+      const filePath = isShared 
+        ? `${item.sharedBy}/${item.name}`
+        : item.name;
+      console.log("filePath", filePath, "isShared", isShared);
+      const response = await fileAPI.downloadFile(filePath, isShared);
 
       if (response.ok) {
         const blob = await response.blob();
         
         if ('showSaveFilePicker' in window) {
           try {
-            const extension = selectedItem.name.split('.').pop();
+            const extension = item.name.split('.').pop();
             const mimeType = blob.type || 'application/octet-stream';
             
             const handle = await window.showSaveFilePicker({
-              suggestedName: selectedItem.name,
+              suggestedName: item.name,
               types: [{
                 description: 'All Files',
                 accept: {
@@ -342,7 +351,7 @@ const HomePage = () => {
               const url = window.URL.createObjectURL(blob);
               const a = document.createElement('a');
               a.href = url;
-              a.download = selectedItem.name;
+              a.download = item.name;
               document.body.appendChild(a);
               a.click();
               window.URL.revokeObjectURL(url);
@@ -360,7 +369,7 @@ const HomePage = () => {
           const url = window.URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = selectedItem.name;
+          a.download = item.name;
           document.body.appendChild(a);
           a.click();
           window.URL.revokeObjectURL(url);
@@ -394,7 +403,9 @@ const HomePage = () => {
     if (!selectedItem) return;
     
     if (selectedItem.isShared) {
-      navigate(`/explorer/${selectedItem.sharedBy}/${selectedItem.name}`);
+      // For shared items, navigate to the shared item's path
+      const path = `${selectedItem.sharedBy}/${selectedItem.name}`;
+      navigate(`/explorer/${path}`);
     } else {
       navigate(`/explorer/${selectedItem.name}`);
     }
@@ -418,7 +429,7 @@ const HomePage = () => {
         >
           <Box sx={{ position: 'relative' }}>
             <CardActionArea
-              onClick={() => item.is_folder ? handleFolderClick(name) : handleFileClick(name)}
+              onClick={() => handleFileClick(name, item)}
               sx={{ height: '100%', p: 2 }}
             >
               <Box
@@ -492,7 +503,8 @@ const HomePage = () => {
             sharedItemsArray.push({
               name: node.name || 'Shared Item',
               sharedBy: fromUser,
-              node: node
+              node: node,
+              is_folder: node.is_folder
             });
           });
         }
@@ -508,35 +520,91 @@ const HomePage = () => {
     }
 
     return (
-      <List>
+      <Grid container spacing={2}>
         {sharedItemsArray.map((item, index) => (
-          <ListItem
-            key={index}
-            secondaryAction={
-              <Box>
-                <Tooltip title="More options">
-                  <IconButton
-                    edge="end"
-                    onClick={(e) => handleMenuOpen(e, item, true)}
+          <Grid item xs={12} sm={6} md={4} lg={3} key={index}>
+            <Card
+              sx={{
+                height: '100%',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: 6,
+                },
+              }}
+            >
+              <Box sx={{ position: 'relative' }}>
+                <CardActionArea
+                  onClick={() => item.is_folder ? handleFolderClick(`${item.sharedBy}/${item.name}`) : handleDownload(item)}
+                  sx={{ height: '100%', p: 2 }}
+                >
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 2,
+                    }}
                   >
-                    <MoreVert />
-                  </IconButton>
-                </Tooltip>
+                    {item.is_folder ? (
+                      <Folder sx={{ fontSize: 48, color: 'primary.main' }} />
+                    ) : (
+                      <InsertDriveFile sx={{ fontSize: 48, color: 'text.secondary' }} />
+                    )}
+                    <Typography
+                      variant="subtitle1"
+                      align="center"
+                      sx={{
+                        fontWeight: 500,
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      {item.name}
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      align="center"
+                    >
+                      Shared by {item.sharedBy}
+                    </Typography>
+                    {!item.is_folder && item.node.file_obj && (
+                      <Chip
+                        label={`${(item.node.file_obj.size / 1024).toFixed(1)} KB`}
+                        size="small"
+                        variant="outlined"
+                      />
+                    )}
+                  </Box>
+                </CardActionArea>
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: 8,
+                    right: 8,
+                    zIndex: 1,
+                  }}
+                >
+                  <Tooltip title="More options">
+                    <IconButton
+                      onClick={(e) => handleMenuOpen(e, item, true)}
+                      size="small"
+                      sx={{
+                        bgcolor: 'background.paper',
+                        '&:hover': {
+                          bgcolor: 'action.hover',
+                        },
+                      }}
+                    >
+                      <MoreVert />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
               </Box>
-            }
-          >
-            <ListItemAvatar>
-              <Avatar sx={{ bgcolor: 'secondary.main' }}>
-                <Share />
-              </Avatar>
-            </ListItemAvatar>
-            <ListItemText
-              primary={item.name}
-              secondary={`Shared by ${item.sharedBy}`}
-            />
-          </ListItem>
+            </Card>
+          </Grid>
         ))}
-      </List>
+      </Grid>
     );
   };
 
@@ -555,6 +623,14 @@ const HomePage = () => {
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: 'none' }}
+        onChange={handleFileSelected}
+      />
+
       {/* Welcome Section */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>
@@ -778,12 +854,6 @@ const HomePage = () => {
           <MenuItem onClick={handleDownload}>
             <Download sx={{ mr: 2 }} />
             Download
-          </MenuItem>
-        )}
-        {selectedItem && selectedItem.isShared && (
-          <MenuItem onClick={handleView}>
-            <Visibility sx={{ mr: 2 }} />
-            View
           </MenuItem>
         )}
         <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>

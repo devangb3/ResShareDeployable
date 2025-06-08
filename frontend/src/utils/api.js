@@ -105,7 +105,7 @@ export const fileAPI = {
       throw new Error(data.message || 'Download failed');
     }
     
-    return response; // Return the response for blob handling
+    return response;
   },
 
   deleteItem: async (nodePath, deleteInRoot) => {

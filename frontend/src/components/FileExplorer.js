@@ -54,7 +54,7 @@ import { fileAPI, utils } from '../utils/api';
 const FileExplorer = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, rootData, setRootData } = useAuth();
+  const { user, rootData, setRootData, shareList } = useAuth();
   
   const [currentPath, setCurrentPath] = useState('');
   const [currentNode, setCurrentNode] = useState(null);
@@ -73,10 +73,22 @@ const FileExplorer = () => {
     setCurrentPath(path);
     
     if (rootData) {
+      // Check if we're in a shared folder
+      const pathParts = path.split('/');
+      if (pathParts.length > 0 && shareList && shareList[pathParts[0]]) {
+        // We're in a shared folder, find the shared node
+        const sharedNode = shareList[pathParts[0]].find(node => node.name === pathParts[1]);
+        if (sharedNode) {
+          setCurrentNode(sharedNode);
+          return;
+        }
+      }
+      
+      // Otherwise, find the node in the root data
       const node = findNodeByPath(rootData, path);
       setCurrentNode(node);
     }
-  }, [location.pathname, rootData]);
+  }, [location.pathname, rootData, shareList]);
 
   const findNodeByPath = (root, path) => {
     if (!path || path === '') return root;
@@ -133,20 +145,9 @@ const FileExplorer = () => {
     try {
       const folderPath = currentPath ? `${currentPath}/${newFolderName}` : newFolderName;
       
-      const response = await fetch('/create-folder', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          folder_path: folderPath,
-        }),
-      });
+      const data = await fileAPI.createFolder(folderPath);
 
-      const data = await response.json();
-
-      if (response.ok && data.result === 'SUCCESS') {
+      if (data.result === 'SUCCESS') {
         setRootData(JSON.parse(data.root));
         setSnackbar({
           open: true,
@@ -228,7 +229,11 @@ const FileExplorer = () => {
     try {
       const filePath = currentPath ? `${currentPath}/${fileName}` : fileName;
       
-      const response = await fileAPI.downloadFile(filePath);
+      // Check if we're in a shared folder by looking at the path
+      const pathParts = currentPath.split('/');
+      const isShared = pathParts.length > 0 && shareList && shareList[pathParts[0]];
+      
+      const response = await fileAPI.downloadFile(filePath, isShared);
 
       if (response.ok) {
         const blob = await response.blob();

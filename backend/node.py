@@ -39,8 +39,9 @@ class Node:
 
     def find_node_by_path(self, path):
         parts = path.strip("/").split("/")
-
-        if parts and parts[0] == self.name:
+        if parts == ['']:
+            return self
+        elif parts and parts[0] == self.name:
             parts = parts[1:]
 
         node = self
