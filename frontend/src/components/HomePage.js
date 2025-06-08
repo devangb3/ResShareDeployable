@@ -27,6 +27,8 @@ import {
   Snackbar,
   Alert,
   LinearProgress,
+  Menu,
+  MenuItem,
 } from '@mui/material';
 import {
   Add,
@@ -37,6 +39,9 @@ import {
   Share,
   People,
   Storage,
+  Delete,
+  MoreVert,
+  Download,
   Visibility,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -45,7 +50,7 @@ import { fileAPI, utils } from '../utils/api';
 
 const HomePage = () => {
   const navigate = useNavigate();
-  const { user, rootData, shareList, setRootData } = useAuth();
+  const { user, rootData, shareList, setRootData, setShareList } = useAuth();
   const [speedDialOpen, setSpeedDialOpen] = useState(false);
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -57,6 +62,8 @@ const HomePage = () => {
     totalFolders: 0,
     sharedItems: 0,
   });
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [menuAnchor, setMenuAnchor] = useState(null);
 
   useEffect(() => {
     if (rootData) {
@@ -231,6 +238,169 @@ const HomePage = () => {
     console.log('File clicked:', fileName);
   };
 
+  const handleMenuOpen = (event, item, isShared = false) => {
+    event.stopPropagation();
+    setSelectedItem({ ...item, isShared });
+    setMenuAnchor(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setMenuAnchor(null);
+    setSelectedItem(null);
+  };
+
+  const handleDelete = async () => {
+    if (!selectedItem) return;
+
+    try {
+      const response = await fileAPI.deleteItem(
+        selectedItem.sharedBy + "/" + selectedItem.name,
+        !selectedItem.isShared
+      );
+
+      if (response.message === 'SUCCESS') {
+        if (selectedItem.isShared) {
+          // Update share list
+          const updatedShareList = { ...shareList };
+          const fromUser = selectedItem.sharedBy;
+          if (updatedShareList[fromUser]) {
+            updatedShareList[fromUser] = updatedShareList[fromUser].filter(
+              node => node.name !== selectedItem.name
+            );
+            if (updatedShareList[fromUser].length === 0) {
+              delete updatedShareList[fromUser];
+            }
+          }
+          setShareList(updatedShareList);
+        } else {
+          // Update root data
+          setRootData(JSON.parse(response.root));
+        }
+
+        setSnackbar({
+          open: true,
+          message: 'Item deleted successfully!',
+          severity: 'success',
+        });
+      } else {
+        setSnackbar({
+          open: true,
+          message: response.message || 'Failed to delete item',
+          severity: 'error',
+        });
+      }
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error.message || 'Failed to delete item',
+        severity: 'error',
+      });
+    }
+    handleMenuClose();
+  };
+
+  const handleDownload = async () => {
+    if (!selectedItem) return;
+
+    try {
+      const filePath = selectedItem.isShared 
+        ? `${selectedItem.sharedBy}/${selectedItem.name}`
+        : selectedItem.name;
+
+      const response = await fileAPI.downloadFile(filePath, selectedItem.isShared);
+
+      if (response.ok) {
+        const blob = await response.blob();
+        
+        if ('showSaveFilePicker' in window) {
+          try {
+            const extension = selectedItem.name.split('.').pop();
+            const mimeType = blob.type || 'application/octet-stream';
+            
+            const handle = await window.showSaveFilePicker({
+              suggestedName: selectedItem.name,
+              types: [{
+                description: 'All Files',
+                accept: {
+                  [mimeType]: [`.${extension}`]
+                }
+              }]
+            });
+            
+            const writable = await handle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            
+            setSnackbar({
+              open: true,
+              message: 'File downloaded successfully!',
+              severity: 'success',
+            });
+          } catch (err) {
+            if (err.name !== 'AbortError') {
+              console.error('Error saving file:', err);
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = selectedItem.name;
+              document.body.appendChild(a);
+              a.click();
+              window.URL.revokeObjectURL(url);
+              document.body.removeChild(a);
+              
+              setSnackbar({
+                open: true,
+                message: 'File downloaded successfully!',
+                severity: 'success',
+              });
+            }
+          }
+        } else {
+          // Fallback for browsers that don't support File System Access API
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = selectedItem.name;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+          
+          setSnackbar({
+            open: true,
+            message: 'File downloaded successfully!',
+            severity: 'success',
+          });
+        }
+      } else {
+        const data = await response.json();
+        setSnackbar({
+          open: true,
+          message: data.message || 'Failed to download file',
+          severity: 'error',
+        });
+      }
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error.message || 'Failed to download file',
+        severity: 'error',
+      });
+    }
+    handleMenuClose();
+  };
+
+  const handleView = () => {
+    if (!selectedItem) return;
+    
+    if (selectedItem.isShared) {
+      navigate(`/explorer/${selectedItem.sharedBy}/${selectedItem.name}`);
+    } else {
+      navigate(`/explorer/${selectedItem.name}`);
+    }
+    handleMenuClose();
+  };
+
   const renderRootItems = () => {
     if (!rootData || !rootData.children) return null;
 
@@ -246,53 +416,76 @@ const HomePage = () => {
             },
           }}
         >
-          <CardActionArea
-            onClick={() => item.is_folder ? handleFolderClick(name) : handleFileClick(name)}
-            sx={{ height: '100%', p: 2 }}
-          >
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 2,
-              }}
+          <Box sx={{ position: 'relative' }}>
+            <CardActionArea
+              onClick={() => item.is_folder ? handleFolderClick(name) : handleFileClick(name)}
+              sx={{ height: '100%', p: 2 }}
             >
-              {item.is_folder ? (
-                <Folder sx={{ fontSize: 48, color: 'primary.main' }} />
-              ) : (
-                <InsertDriveFile sx={{ fontSize: 48, color: 'text.secondary' }} />
-              )}
-              <Typography
-                variant="subtitle1"
-                align="center"
+              <Box
                 sx={{
-                  fontWeight: 500,
-                  wordBreak: 'break-word',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 2,
                 }}
               >
-                {name}
-              </Typography>
-              {!item.is_folder && item.file_obj && (
-                <Chip
-                  label={`${(item.file_obj.size / 1024).toFixed(1)} KB`}
+                {item.is_folder ? (
+                  <Folder sx={{ fontSize: 48, color: 'primary.main' }} />
+                ) : (
+                  <InsertDriveFile sx={{ fontSize: 48, color: 'text.secondary' }} />
+                )}
+                <Typography
+                  variant="subtitle1"
+                  align="center"
+                  sx={{
+                    fontWeight: 500,
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {name}
+                </Typography>
+                {!item.is_folder && item.file_obj && (
+                  <Chip
+                    label={`${(item.file_obj.size / 1024).toFixed(1)} KB`}
+                    size="small"
+                    variant="outlined"
+                  />
+                )}
+              </Box>
+            </CardActionArea>
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                zIndex: 1,
+              }}
+            >
+              <Tooltip title="More options">
+                <IconButton
+                  onClick={(e) => handleMenuOpen(e, { name, ...item })}
                   size="small"
-                  variant="outlined"
-                />
-              )}
+                  sx={{
+                    bgcolor: 'background.paper',
+                    '&:hover': {
+                      bgcolor: 'action.hover',
+                    },
+                  }}
+                >
+                  <MoreVert />
+                </IconButton>
+              </Tooltip>
             </Box>
-          </CardActionArea>
+          </Box>
         </Card>
       </Grid>
     ));
   };
 
   const renderSharedItems = () => {
-    // Convert shareList object to array format
     let sharedItemsArray = [];
     
     if (shareList && typeof shareList === 'object') {
-      // shareList is an object with structure: { "username": [nodes...] }
       Object.entries(shareList).forEach(([fromUser, nodes]) => {
         if (Array.isArray(nodes)) {
           nodes.forEach(node => {
@@ -320,11 +513,16 @@ const HomePage = () => {
           <ListItem
             key={index}
             secondaryAction={
-              <Tooltip title="View">
-                <IconButton edge="end" aria-label="view"> {/* Added aria-label for accessibility */}
-                  <Visibility />
-                </IconButton>
-              </Tooltip>
+              <Box>
+                <Tooltip title="More options">
+                  <IconButton
+                    edge="end"
+                    onClick={(e) => handleMenuOpen(e, item, true)}
+                  >
+                    <MoreVert />
+                  </IconButton>
+                </Tooltip>
+              </Box>
             }
           >
             <ListItemAvatar>
@@ -569,6 +767,30 @@ const HomePage = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Context Menu */}
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={handleMenuClose}
+      >
+        {selectedItem && !selectedItem.is_folder && (
+          <MenuItem onClick={handleDownload}>
+            <Download sx={{ mr: 2 }} />
+            Download
+          </MenuItem>
+        )}
+        {selectedItem && selectedItem.isShared && (
+          <MenuItem onClick={handleView}>
+            <Visibility sx={{ mr: 2 }} />
+            View
+          </MenuItem>
+        )}
+        <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
+          <Delete sx={{ mr: 2 }} />
+          Delete
+        </MenuItem>
+      </Menu>
     </Container>
   );
 };

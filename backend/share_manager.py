@@ -8,7 +8,7 @@ class ShareManager:
     def __init__(self):
         self.share_list: Dict[str, List[Node]] = {}
 
-    def receive(self, from_username: str, node: Node):
+    def receive(self, from_username: str, node: Node) -> ErrorCode:
         if from_username not in self.share_list:
             self.share_list[from_username] = []
         if node in self.share_list[from_username]:
@@ -53,3 +53,28 @@ class ShareManager:
     @classmethod
     def from_json(cls, json_str):
         return cls.from_dict(json.loads(json_str))
+
+    def delete(self, from_user: str, target_node: Node) -> ErrorCode:
+        """
+        Deletes a shared node from both the sender and receiver's share lists.
+        
+        Args:
+            from_user: The username of the user who shared the node
+            target_node: The node to be deleted
+            
+        Returns:
+            ErrorCode: SUCCESS if deletion was successful, NODE_NOT_FOUND if node wasn't found
+        """
+        if from_user not in self.share_list:
+            return ErrorCode.NODE_NOT_FOUND
+            
+        # Find and remove the node from the share list
+        for i, node in enumerate(self.share_list[from_user]):
+            if node.name == target_node.name and node.is_folder == target_node.is_folder:
+                self.share_list[from_user].pop(i)
+                # If this was the last shared item from this user, remove their entry
+                if not self.share_list[from_user]:
+                    del self.share_list[from_user]
+                return ErrorCode.SUCCESS
+                
+        return ErrorCode.NODE_NOT_FOUND

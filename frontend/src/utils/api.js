@@ -90,14 +90,14 @@ export const fileAPI = {
     return handleResponse(response);
   },
 
-  downloadFile: async (path) => {
+  downloadFile: async (path, isShared = false) => {
     const response = await fetch(`${API_BASE_URL}/download`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       credentials: 'include',
-      body: JSON.stringify({ path }),
+      body: JSON.stringify({ path, is_shared: isShared }),
     });
     
     if (!response.ok) {
