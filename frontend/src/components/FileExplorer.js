@@ -47,7 +47,7 @@ import {
   TableChart,
   Slideshow,
 } from '@mui/icons-material';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../App';
 import { fileAPI, utils } from '../utils/api';
 

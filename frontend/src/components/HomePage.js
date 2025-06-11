@@ -11,11 +11,6 @@ import {
   Card,
   CardActionArea,
   Chip,
-  Avatar,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
   IconButton,
   Tooltip,
   Dialog,
@@ -65,6 +60,8 @@ const HomePage = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [menuAnchor, setMenuAnchor] = useState(null);
   const fileInputRef = React.useRef(null);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareUsername, setShareUsername] = useState('');
 
   useEffect(() => {
     if (rootData) {
@@ -408,6 +405,39 @@ const HomePage = () => {
       navigate(`/explorer/${path}`);
     } else {
       navigate(`/explorer/${selectedItem.name}`);
+    }
+    handleMenuClose();
+  };
+
+  const handleShare = async () => {
+    if (!shareUsername.trim() || !selectedItem) return;
+    const itemToShare = selectedItem.isShared ? selectedItem.node : selectedItem;
+    console.log("itemToShare:", itemToShare);
+    
+    try {
+      const data = await fileAPI.shareItem(shareUsername, itemToShare);
+
+      if (data.message === 'SUCCESS') {
+        setSnackbar({
+          open: true,
+          message: 'Item shared successfully!',
+          severity: 'success',
+        });
+        setShareDialogOpen(false);
+        setShareUsername('');
+      } else {
+        setSnackbar({
+          open: true,
+          message: data.message || 'Failed to share item',
+          severity: 'error',
+        });
+      }
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error.message || 'Network error. Please try again.',
+        severity: 'error',
+      });
     }
     handleMenuClose();
   };
@@ -856,11 +886,38 @@ const HomePage = () => {
             Download
           </MenuItem>
         )}
+        <MenuItem onClick={() => setShareDialogOpen(true)}>
+          <Share sx={{ mr: 2 }} />
+          Share
+        </MenuItem>
         <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
           <Delete sx={{ mr: 2 }} />
           Delete
         </MenuItem>
       </Menu>
+
+      {/* Share Dialog */}
+      <Dialog open={shareDialogOpen} onClose={() => setShareDialogOpen(false)}>
+        <DialogTitle>Share Item</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Username"
+            fullWidth
+            variant="outlined"
+            value={shareUsername}
+            onChange={(e) => setShareUsername(e.target.value)}
+            helperText="Enter the username of the person you want to share with"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShareDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleShare} variant="contained">
+            Share
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };
