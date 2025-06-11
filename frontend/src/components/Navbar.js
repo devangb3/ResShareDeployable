@@ -11,7 +11,6 @@ import {
   Tooltip,
 } from '@mui/material';
 import {
-  CloudQueue,
   Brightness4,
   Brightness7,
   Home,
@@ -70,10 +69,12 @@ const Navbar = () => {
     >
       <Toolbar sx={{ justifyContent: 'space-between' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <CloudQueue 
-            sx={{ 
-              fontSize: 32, 
-              color: 'primary.main',
+          <img 
+            src="/logo192.png"
+            alt="ResShare Logo"
+            style={{
+              width: '32px',
+              height: '32px',
               cursor: 'pointer',
             }}
             onClick={handleHomeClick}

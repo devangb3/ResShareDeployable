@@ -14,7 +14,6 @@ import {
   CircularProgress,
 } from '@mui/material';
 import {
-  CloudQueue,
   Visibility,
   VisibilityOff,
   Login as LoginIcon,
@@ -104,10 +103,12 @@ const LoginPage = () => {
                 gap: 2,
               }}
             >
-              <CloudQueue 
-                sx={{ 
-                  fontSize: 48, 
-                  color: 'primary.main',
+              <img 
+                src="/logo192.png"
+                alt="ResShare Logo"
+                style={{
+                  width: '48px',
+                  height: '48px',
                   filter: 'drop-shadow(0 2px 4px rgba(25,118,210,0.3))',
                 }}
               />
