@@ -45,7 +45,7 @@ npm install
 
 ## Running the Application
 
-1. Start the IPFS daemon:
+1. Start the IPFS daemon (To install IPFS Cluster Service, please refer to [Link](https://ipfscluster.io/download/)):
 ```bash
 ipfs daemon
 ```
