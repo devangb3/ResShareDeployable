@@ -78,6 +78,11 @@ export const fileAPI = {
   },
 
   uploadFile: async (file, path) => {
+    const sizeValidation = utils.validateFileSize(file, 1); // 1 MB limit
+    if (!sizeValidation.isValid) {
+      throw new Error(sizeValidation.error);
+    }
+
     const formData = new FormData();
     formData.append('file', file);
     formData.append('path', path || '');
@@ -152,6 +157,17 @@ export const utils = {
 
   getFileExtension: (filename) => {
     return filename.slice((filename.lastIndexOf('.') - 1 >>> 0) + 2);
+  },
+
+  validateFileSize: (file, maxSizeMB = 1) => {
+    const maxSizeBytes = maxSizeMB * 1024 * 1024;
+    if (file.size > maxSizeBytes) {
+      return {
+        isValid: false,
+        error: `File size (${utils.formatFileSize(file.size)}) exceeds the maximum limit of ${maxSizeMB} MB`
+      };
+    }
+    return { isValid: true, error: null };
   },
 
   getFileIcon: (filename, isFolder) => {

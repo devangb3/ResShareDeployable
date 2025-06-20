@@ -176,6 +176,17 @@ const FileExplorer = () => {
     const file = event.target.files[0];
     if (!file) return;
 
+    const sizeValidation = utils.validateFileSize(file, 1);
+    if (!sizeValidation.isValid) {
+      setSnackbar({
+        open: true,
+        message: sizeValidation.error,
+        severity: 'error',
+      });
+      event.target.value = '';
+      return;
+    }
+
     setUploading(true);
     setUploadProgress(0);
 
@@ -421,8 +432,11 @@ const FileExplorer = () => {
             <Typography variant="h6" sx={{ mb: 1 }}>
               This folder is empty
             </Typography>
-            <Typography variant="body2">
+            <Typography variant="body2" sx={{ mb: 2 }}>
               Upload files or create folders to get started
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Maximum file size: 1 MB
             </Typography>
           </Box>
         </Grid>
@@ -553,23 +567,29 @@ const FileExplorer = () => {
             ))}
           </Breadcrumbs>
 
-          <input
-            accept="*/*"
-            style={{ display: 'none' }}
-            id="upload-file"
-            type="file"
-            onChange={handleUpload}
-          />
-          <label htmlFor="upload-file">
-            <Button
-              variant="contained"
-              component="span"
-              startIcon={<Upload />}
-              disabled={uploading}
-            >
-              Upload
-            </Button>
-          </label>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="caption" color="text.secondary">
+              Max: 1 MB
+            </Typography>
+            <input
+              accept="*/*"
+              style={{ display: 'none' }}
+              id="upload-file"
+              type="file"
+              onChange={handleUpload}
+              title="Maximum file size: 1 MB"
+            />
+            <label htmlFor="upload-file">
+              <Button
+                variant="contained"
+                component="span"
+                startIcon={<Upload />}
+                disabled={uploading}
+              >
+                Upload
+              </Button>
+            </label>
+          </Box>
 
           <Button
             variant="outlined"

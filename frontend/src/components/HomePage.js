@@ -174,6 +174,19 @@ const HomePage = () => {
     const file = event.target.files[0];
     if (!file) return;
 
+    const sizeValidation = utils.validateFileSize(file, 1);
+    if (!sizeValidation.isValid) {
+      setSnackbar({
+        open: true,
+        message: sizeValidation.error,
+        severity: 'error',
+      });
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
+
     setUploading(true);
     setUploadProgress(0);
 
@@ -255,7 +268,7 @@ const HomePage = () => {
 
     try {
       const response = await fileAPI.deleteItem(
-        selectedItem.sharedBy + "/" + selectedItem.name,
+        selectedItem.isShared ? selectedItem.sharedBy + "/" + selectedItem.name : selectedItem.name,
         !selectedItem.isShared
       );
 
@@ -659,6 +672,7 @@ const HomePage = () => {
         ref={fileInputRef}
         style={{ display: 'none' }}
         onChange={handleFileSelected}
+        title="Maximum file size: 1 MB"
       />
 
       {/* Welcome Section */}
@@ -682,6 +696,11 @@ const HomePage = () => {
                 My Files
               </Typography>
             </Box>
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                Maximum file size: 1 MB
+              </Typography>
+            </Box>
             <Grid container spacing={2}>
               {renderRootItems()}
               {(!rootData || !rootData.children || Object.keys(rootData.children).length === 0) && (
@@ -697,8 +716,11 @@ const HomePage = () => {
                     <Typography variant="h6" sx={{ mb: 1 }}>
                       No files yet
                     </Typography>
-                    <Typography variant="body2">
+                    <Typography variant="body2" sx={{ mb: 2 }}>
                       Start by creating a folder or uploading a file
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Maximum file size: 1 MB
                     </Typography>
                   </Box>
                 </Grid>

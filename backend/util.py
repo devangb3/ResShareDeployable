@@ -30,3 +30,20 @@ def is_valid_username(username: str) -> bool:
         return False
     return True
 
+
+def validate_file_size(file_size: int, max_size: int = 1024 * 1024) -> tuple[bool, str]:
+    """
+    Validate if file size is within the allowed limit.
+    
+    Args:
+        file_size: Size of the file in bytes
+        max_size: Maximum allowed file size in bytes (default: 1MB)
+        
+    Returns:
+        tuple: (is_valid, error_message)
+    """
+    if file_size > max_size:
+        max_size_mb = max_size / (1024 * 1024)
+        return False, f"File size exceeds the maximum limit of {max_size_mb} MB"
+    return True, ""
+

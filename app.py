@@ -1,6 +1,5 @@
 import hashlib
 import json
-from uu import Error
 from io import BytesIO
 
 from flask import Flask, request, jsonify, session, send_file
@@ -15,8 +14,9 @@ from backend.share_manager import ShareManager
 from backend.user_authentication_service import login, sign_up
 from backend.file import File
 from backend.delete_service import delete_node
+from backend.util import validate_file_size
 
-FILE_SIZE_LIMIT = 500 * 1024 * 1024
+FILE_SIZE_LIMIT = 1024 * 1024  # 1 MB limit
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=['http://localhost:5997', 'http://127.0.0.1:5997'])
 app.secret_key = "e9fdf1d445d445bb7d12df76043e3b74617cf78934a99353efb3a7eb826dfb01"
@@ -185,8 +185,10 @@ def upload_route():
 
     file_size = file_stream.getbuffer().nbytes
 
-    if file_size > FILE_SIZE_LIMIT:
-        return jsonify({'message': ErrorCode.EXCEED_MAX_FILE_SIZE.name}), 413
+    # Validate file size
+    is_valid, error_message = validate_file_size(file_size, FILE_SIZE_LIMIT)
+    if not is_valid:
+        return jsonify({'message': error_message}), 413
 
     cid = add_file_to_cluster(file_stream, filename)
 
