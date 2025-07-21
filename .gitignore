@@ -43,3 +43,4 @@ __pycache__/
 *.so
 *.pyc
 /frontend/node_modules/
+/backend/vector_db/

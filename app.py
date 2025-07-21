@@ -16,6 +16,12 @@ from backend.file import File
 from backend.delete_service import delete_node
 from backend.util import validate_file_size
 
+from backend.rag_utils import get_rag_manager, get_llm_integration
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 FILE_SIZE_LIMIT = 1024 * 1024  # 1 MB limit
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=['http://localhost:5997', 'http://127.0.0.1:5997'])
@@ -165,6 +171,7 @@ def logout_route():
 @login_required
 def upload_route():
     """
+    Upload file to IPFS and process for RAG if it's a supported text format.
     if user want to upload example.txt to path root/doc/example.txt. The path part in request should be root/doc
     """
     if 'file' not in request.files:
@@ -208,8 +215,105 @@ def upload_route():
 
     set_kv(username + " ROOT", root.to_json())
 
-    return jsonify({'message': ErrorCode.SUCCESS.name, 'root': root.to_json()}), 200
+    rag_success = False
+    supported_extensions = {'pdf', 'docx', 'txt'}
+    file_extension = filename.lower().split('.')[-1] if '.' in filename else ''
+    
+    if file_extension in supported_extensions:
+        try:
+            file_stream.seek(0)
+            file_content = file_stream.read()
+            
+            rag_manager = get_rag_manager()
+            rag_success = rag_manager.process_file_for_rag(file_content, filename, username, cid)
+            
+            if rag_success:
+                logger.info(f"Successfully processed {filename} for RAG for user {username}")
+            else:
+                logger.warning(f"Failed to process {filename} for RAG for user {username}")
+                
+        except Exception as e:
+            logger.error(f"RAG processing error for {filename}: {e}")
+            rag_success = False
 
+    response_data = {
+        'message': ErrorCode.SUCCESS.name, 
+        'root': root.to_json(),
+        'rag_processed': rag_success
+    }
+    
+    return jsonify(response_data), 200
+
+
+@app.route('/chat', methods=['POST'])
+@login_required
+def chat_route():
+    """
+    RAG-powered chat endpoint that answers questions based on user's uploaded files
+    """
+    try:
+        data = request.get_json()
+        
+        if not data or 'query' not in data:
+            return jsonify({'error': 'Query is required'}), 400
+        
+        query = data['query'].strip()
+        if not query:
+            return jsonify({'error': 'Query cannot be empty'}), 400
+        
+        username = session['username']
+        
+        rag_manager = get_rag_manager()
+        relevant_chunks = rag_manager.search_user_vector_db(username, query, top_k=5)
+        
+        if not relevant_chunks:
+            return jsonify({
+                'answer': "I couldn't find any relevant information in your uploaded files to answer this question. Please make sure you have uploaded text-based documents (PDF, DOCX, or TXT files).",
+                'sources': [],
+                'chunks_found': 0
+            }), 200
+        
+        llm_integration = get_llm_integration()
+        answer = llm_integration.generate_answer(query, relevant_chunks)
+        
+        sources = []
+        seen_files = set()
+        for chunk in relevant_chunks:
+            filename = chunk['chunk']['metadata']['filename']
+            if filename not in seen_files:
+                sources.append({
+                    'filename': filename,
+                    'score': chunk['score']
+                })
+                seen_files.add(filename)
+        
+        return jsonify({
+            'answer': answer,
+            'sources': sources,
+            'chunks_found': len(relevant_chunks)
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Chat endpoint error: {e}")
+        return jsonify({'error': 'An error occurred while processing your question'}), 500
+
+
+@app.route('/chat/stats', methods=['GET'])
+@login_required
+def chat_stats_route():
+    """
+    Get statistics about user's RAG database
+    """
+    try:
+        username = session['username']
+        rag_manager = get_rag_manager()
+        stats = rag_manager.get_user_stats(username)
+        
+        return jsonify(stats), 200
+        
+    except Exception as e:
+        logger.error(f"Chat stats error: {e}")
+        return jsonify({'error': 'Failed to get chat statistics'}), 500
 
 
 @app.route('/download', methods=['POST'])
