@@ -125,13 +125,6 @@ For higher quality responses, set up Gemini:
 export GOOGLE_API_KEY="sk-your-key-here"
 ```
 
-### Advanced Configuration
-See [CONFIG.md](CONFIG.md) for detailed configuration options including:
-- Custom embedding models
-- Performance optimization
-- Local LLM integration
-- Production deployment settings
-
 ## Usage
 
 ### Standard File Operations
@@ -148,21 +141,6 @@ See [CONFIG.md](CONFIG.md) for detailed configuration options including:
 3. **Ask Questions**: Use the AI Chat interface to query your documents
 4. **Get Intelligent Answers**: Receive responses with source attribution
 5. **Explore Knowledge Base**: View statistics about your indexed documents
-
-## Security Features
-
-### Standard Security
-- Password hashing using SHA-256
-- Session-based authentication
-- File size limits (500MB per file)
-- Secure file storage using IPFS
-
-### AI Security
-- **User Data Isolation**: Each user's AI knowledge base is completely separate
-- **No Cross-User Access**: Cannot access other users' document content
-- **Privacy-First Design**: Documents processed locally, only queries sent to LLM APIs
-- **Secure Vector Storage**: Encrypted local storage of document embeddings
-
 ## Architecture
 
 ### RAG Pipeline
@@ -178,92 +156,3 @@ User Query → Query Embedding → Vector Search → Context → LLM → Respons
 - **Embeddings**: Sentence Transformers (default: all-MiniLM-L6-v2)
 - **Vector DB**: FAISS with per-user isolation
 - **LLM**: Gemini 2.5 Flash (optional) or extractive fallback
-
-## API Endpoints
-
-### New AI Endpoints
-- `POST /chat` - Send a question to the AI chatbot
-- `GET /chat/stats` - Get statistics about user's knowledge base
-
-### Standard Endpoints  
-- `POST /login` - User authentication
-- `POST /signup` - User registration
-- `POST /upload` - File upload (now includes AI processing)
-- `POST /download` - File download
-- `POST /create-folder` - Folder creation
-- `POST /share` - File sharing
-- `DELETE /delete` - File/folder deletion
-
-## Development
-
-### Adding New File Types
-To support additional file formats, extend the `extract_text_from_file` method in `backend/rag_utils.py`:
-
-```python
-def _extract_from_new_format(self, file_content: bytes) -> str:
-    # Custom extraction logic
-    return extracted_text
-```
-
-### Custom LLM Integration
-Integrate local or custom LLMs by extending the `LLMIntegration` class:
-
-```python
-class CustomLLMIntegration(LLMIntegration):
-    def generate_answer(self, query, context_chunks, max_tokens=500):
-        # Custom implementation
-        return response
-```
-
-## Performance Considerations
-
-- **Embedding Generation**: ~1-2 seconds per document on CPU
-- **Vector Search**: Sub-second response times
-- **Storage**: ~1MB per 1000 text chunks
-- **Memory**: 2-4GB RAM recommended for production
-
-## Troubleshooting
-
-### Common Issues
-1. **AI responses not working**: Check if documents are text-based (PDF/DOCX/TXT)
-2. **Slow processing**: Ensure adequate RAM and consider GPU acceleration
-3. **Vector DB errors**: Ensure `backend/vector_db/` directory has write permissions
-
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## Acknowledgments
-
-- **AI/ML Libraries**: Sentence Transformers, FAISS, LangChain
-- **IPFS**: For decentralized file storage
-- **ResilientDB**: For metadata management
-- **Gemini**: For high-quality language model responses
-- **React & Material-UI**: For the beautiful frontend interface
-
----
-
-## Quick Start Example
-
-```bash
-# 1. Set up the environment
-git clone https://github.com/NoBugInMyCode/ResShareDeployable.git
-cd ResShareDeployable
-pip install -r requirements.txt
-
-# 2. (Optional) Set up Gemini for better AI responses
-export GOOGLE_API_KEY="your-key-here"
-
-# 3. Start services
-ipfs daemon &
-python app.py &
-cd frontend && npm start
-
-# 4. Open http://localhost:3000 and enjoy!
-```
-
