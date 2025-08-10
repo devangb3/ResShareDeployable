@@ -6,6 +6,7 @@ import LoginPage from './components/LoginPage';
 import RegisterPage from './components/RegisterPage';
 import HomePage from './components/HomePage';
 import FileExplorer from './components/FileExplorer';
+import ChatInterface from './components/ChatInterface';
 import Navbar from './components/Navbar';
 
 // Auth Context
@@ -19,7 +20,6 @@ export const useAuth = () => {
   return context;
 };
 
-// Theme Context
 const ThemeContext = createContext();
 
 export const useThemeMode = () => {
@@ -139,6 +139,10 @@ function App() {
               <Route 
                 path="/explorer/*" 
                 element={user ? <FileExplorer /> : <Navigate to="/login" />} 
+              />
+              <Route 
+                path="/chat" 
+                element={user ? <ChatInterface /> : <Navigate to="/login" />} 
               />
               <Route 
                 path="/" 

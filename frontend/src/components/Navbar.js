@@ -9,23 +9,29 @@ import {
   Box,
   Avatar,
   Tooltip,
+  Button,
 } from '@mui/material';
 import {
   Brightness4,
   Brightness7,
   Home,
+  Folder,
   Logout,
   Delete,
+  SmartToy,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, useThemeMode } from '../App';
 import { authAPI } from '../utils/api';
+import { useTheme } from '@mui/material/styles';
 
 const Navbar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuth();
   const { darkMode, toggleTheme } = useThemeMode();
   const [anchorEl, setAnchorEl] = useState(null);
+  const theme = useTheme();
 
   const handleMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -37,7 +43,6 @@ const Navbar = () => {
 
   const handleLogout = async () => {
     try {
-      // Call logout API
       await authAPI.logout();
     } catch (error) {
       console.error('Logout error:', error);
@@ -48,7 +53,6 @@ const Navbar = () => {
   };
 
   const handleDeleteAccount = () => {
-    // This would open a confirmation dialog
     console.log('Delete account clicked');
     handleMenuClose();
   };
@@ -56,6 +60,14 @@ const Navbar = () => {
   const handleHomeClick = () => {
     navigate('/home');
   };
+
+  const navButtonStyle = (active) => ({
+    my: 2,
+    color: active ? theme.palette.primary.main : theme.palette.text.primary,
+    display: 'flex',
+    alignItems: 'center',
+    fontWeight: active ? 600 : 400,
+  });
 
   return (
     <AppBar 
@@ -82,7 +94,7 @@ const Navbar = () => {
           <Typography 
             variant="h6" 
             sx={{ 
-              color: 'text.primary',
+              color: theme.palette.text.primary,
               fontWeight: 600,
               cursor: 'pointer',
             }}
@@ -92,29 +104,66 @@ const Navbar = () => {
           </Typography>
         </Box>
 
+        <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
+          <Button
+            onClick={() => navigate('/home')}
+            sx={navButtonStyle(location.pathname === '/home')}
+            startIcon={<Home sx={{ color: theme.palette.text.primary }} />}
+          >
+            Home
+          </Button>
+          <Button
+            onClick={() => navigate('/explorer')}
+            sx={navButtonStyle(location.pathname.startsWith('/explorer'))}
+            startIcon={<Folder sx={{ color: theme.palette.text.primary }} />}
+          >
+            Explorer
+          </Button>
+          <Button
+            onClick={() => navigate('/chat')}
+            sx={navButtonStyle(location.pathname === '/chat')}
+            startIcon={<SmartToy sx={{ color: theme.palette.text.primary }} />}
+          >
+            AI Chat
+          </Button>
+        </Box>
+
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Tooltip title="Go to Home">
             <IconButton 
               onClick={handleHomeClick}
-              sx={{ color: 'text.primary' }}
+              aria-label="Go to Home"
+              sx={{ 
+                color: location.pathname === '/home' ? theme.palette.primary.main : theme.palette.action.active,
+                '&:hover': { backgroundColor: 'action.hover' },
+              }}
             >
-              <Home />
+              <Home fontSize="medium" />
             </IconButton>
           </Tooltip>
 
           <Tooltip title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
             <IconButton 
               onClick={toggleTheme}
-              sx={{ color: 'text.primary' }}
+              aria-label={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              sx={{ 
+                color: theme.palette.action.active,
+                '&:hover': { backgroundColor: 'action.hover' },
+              }}
             >
-              {darkMode ? <Brightness7 /> : <Brightness4 />}
+              {darkMode ? <Brightness7 fontSize="medium" /> : <Brightness4 fontSize="medium" />}
             </IconButton>
           </Tooltip>
 
           <Tooltip title="Account settings">
             <IconButton
               onClick={handleMenuOpen}
-              sx={{ ml: 1 }}
+              aria-label="Account settings"
+              sx={{ 
+                ml: 1,
+                color: theme.palette.action.active,
+                '&:hover': { backgroundColor: 'action.hover' },
+              }}
             >
               <Avatar 
                 sx={{ 
@@ -122,6 +171,7 @@ const Navbar = () => {
                   height: 32, 
                   bgcolor: 'primary.main',
                   fontSize: '0.875rem',
+                  color: theme.palette.primary.contrastText,
                 }}
               >
                 {user?.charAt(0).toUpperCase()}
@@ -165,7 +215,7 @@ const Navbar = () => {
             anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
           >
             <MenuItem disabled>
-              <Avatar sx={{ bgcolor: 'primary.main' }}>
+              <Avatar sx={{ bgcolor: 'primary.main', color: theme.palette.primary.contrastText }}>
                 {user?.charAt(0).toUpperCase()}
               </Avatar>
               <Box>
@@ -176,13 +226,13 @@ const Navbar = () => {
               </Box>
             </MenuItem>
             
-            <MenuItem onClick={handleLogout}>
-              <Logout fontSize="small" sx={{ mr: 2 }} />
+            <MenuItem onClick={handleLogout} sx={{ color: theme.palette.text.primary }}>
+              <Logout fontSize="medium" sx={{ mr: 2, color: theme.palette.action.active }} />
               Logout
             </MenuItem>
             
-            <MenuItem onClick={handleDeleteAccount} sx={{ color: 'error.main' }}>
-              <Delete fontSize="small" sx={{ mr: 2 }} />
+            <MenuItem onClick={handleDeleteAccount} sx={{ color: theme.palette.error.main }}>
+              <Delete fontSize="medium" sx={{ mr: 2, color: theme.palette.error.main }} />
               Delete Account
             </MenuItem>
           </Menu>

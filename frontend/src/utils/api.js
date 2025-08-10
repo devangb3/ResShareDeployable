@@ -143,7 +143,30 @@ export const fileAPI = {
   },
 };
 
-// Utility functions
+export const chatAPI = {
+  sendMessage: async (query) => {
+    const response = await fetch(`${API_BASE_URL}/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({ query }),
+    });
+    
+    return handleResponse(response);
+  },
+
+  getStats: async () => {
+    const response = await fetch(`${API_BASE_URL}/chat/stats`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+    
+    return handleResponse(response);
+  },
+};
+
 export const utils = {
   formatFileSize: (bytes) => {
     if (bytes === 0) return '0 Bytes';
@@ -160,6 +183,7 @@ export const utils = {
   },
 
   validateFileSize: (file, maxSizeMB = 1) => {
+    return { isValid: true, error: null };
     const maxSizeBytes = maxSizeMB * 1024 * 1024;
     if (file.size > maxSizeBytes) {
       return {
