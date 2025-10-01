@@ -71,18 +71,16 @@ const RegisterPage = () => {
     setError('');
 
     try {
-      const signupResponse = await authAPI.signup(formData.username, formData.password);
-      const signupData = await signupResponse.json();
+      const signupData = await authAPI.signup(formData.username, formData.password);
+      console.log("Signup data", signupData);
 
-      if (signupResponse.ok && signupData.result === 'SUCCESS') {
-        // Attempt to login after successful registration
-        const loginResponse = await authAPI.login(formData.username, formData.password);
-        const loginData = await loginResponse.json();
+      if (signupData.result === 'SUCCESS') {
+        const loginData = await authAPI.login(formData.username, formData.password);
 
-        if (loginResponse.ok && loginData.result === 'SUCCESS') {
+        if (loginData.result === 'SUCCESS') {
           setSuccess('Account created and logged in successfully! Redirecting...');
           setTimeout(() => {
-            navigate('/dashboard');
+            navigate('/home');
           }, 1500);
         } else {
           setSuccess('Account created successfully! Please log in.');

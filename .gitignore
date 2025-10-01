@@ -44,3 +44,12 @@ __pycache__/
 *.pyc
 /frontend/node_modules/
 /backend/vector_db/
+.env
+bazel-bazel
+bazel-bin
+bazel-out
+MODULE.bazel
+bazel-external
+bazel-genfiles
+bazel-testlogs
+MODULE.bazel.lock

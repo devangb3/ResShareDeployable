@@ -5,6 +5,7 @@ const handleResponse = async (response) => {
   const data = await response.json();
   
   if (!response.ok) {
+    console.log("Response not ok", data);
     throw new Error(data.message || data.result || 'API request failed');
   }
   
@@ -35,7 +36,7 @@ export const authAPI = {
       },
       body: JSON.stringify({ username, password }),
     });
-    
+    console.log("Signup response", response);
     return handleResponse(response);
   },
 

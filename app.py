@@ -65,6 +65,7 @@ def signup_route():
     result = sign_up(username, password)
     if result == ErrorCode.SUCCESS:
         return jsonify({
+            'ok': "true",
             'result': result.name
         }), 200
 
