@@ -1,0 +1,36 @@
+# version: '3.8'  # Removed to avoid warning
+
+services:
+  resshare-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: resshare-backend
+    ports:
+      - "5000:5000"
+    environment:
+      # Set your Google API key here or use .env file
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - FLASK_ENV=production
+      # Add your Vercel or other frontend URLs (comma-separated)
+      - CORS_ORIGINS=${CORS_ORIGINS:-}
+    volumes:
+      # Persist IPFS data
+      - ipfs_data:/root/.ipfs
+      # Persist IPFS Cluster data
+      - ipfs_cluster_data:/root/.ipfs-cluster
+      # Persist vector database
+      - vector_db:/app/backend/vector_db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  ipfs_data:
+  ipfs_cluster_data:
+  vector_db:
+

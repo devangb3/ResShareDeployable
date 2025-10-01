@@ -24,7 +24,15 @@ logger = logging.getLogger(__name__)
 
 FILE_SIZE_LIMIT = 1024 * 1024  # 1 MB limit
 app = Flask(__name__)
-CORS(app, supports_credentials=True, origins=['http://localhost:5997', 'http://127.0.0.1:5997'])
+
+# Configure CORS - allow additional origins from environment variable
+import os
+allowed_origins = ['http://localhost:5997', 'http://127.0.0.1:5997']
+additional_origins = os.environ.get('CORS_ORIGINS', '')
+if additional_origins:
+    allowed_origins.extend(additional_origins.split(','))
+
+CORS(app, supports_credentials=True, origins=allowed_origins)
 app.secret_key = "e9fdf1d445d445bb7d12df76043e3b74617cf78934a99353efb3a7eb826dfb01"
 
 def login_required(f):
@@ -358,4 +366,6 @@ def download_route():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    import os
+    debug_mode = os.environ.get('FLASK_ENV', 'production') != 'production'
+    app.run(host='0.0.0.0', port=5000, debug=debug_mode)
