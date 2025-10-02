@@ -25,7 +25,6 @@ logger = logging.getLogger(__name__)
 FILE_SIZE_LIMIT = 1024 * 1024  # 1 MB limit
 app = Flask(__name__)
 
-# Configure CORS - allow additional origins from environment variable
 import os
 allowed_origins = ['http://localhost:5997', 'http://127.0.0.1:5997']
 additional_origins = os.environ.get('CORS_ORIGINS', '')
@@ -363,7 +362,9 @@ def download_route():
         as_attachment=True,
         download_name=file_obj.filename
     )
-
+@app.route('/', methods=['GET'])
+def health_route():
+    return jsonify({'message': 'OK'}), 200
 
 if __name__ == '__main__':
     import os

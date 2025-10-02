@@ -1,19 +1,6 @@
 # ResShare Backend - Quick Start Guide
 
-## 🚀 Local Testing (5 Minutes)
-
-### 1. One-Command Setup
-
-```bash
-# Create .env file
-cp env.example .env
-nano .env  # Add your GOOGLE_API_KEY
-
-# Run automated test
-./docker-test.sh
-```
-
-### 2. Manual Setup
+## Local Testing
 
 ```bash
 # 1. Setup environment
@@ -50,16 +37,9 @@ sudo usermod -aG docker ubuntu
 # Logout and login again
 
 # 4. Transfer Code
-# Option A: Git
 git clone https://github.com/your-repo/ResShareDeployable.git
 cd ResShareDeployable
 
-# Option B: SCP (from local machine)
-tar -czf resshare.tar.gz --exclude=frontend/node_modules --exclude=.git .
-scp -i your-key.pem resshare.tar.gz ubuntu@your-ec2-ip:~/
-ssh -i your-key.pem ubuntu@your-ec2-ip
-mkdir -p ResShareDeployable && tar -xzf resshare.tar.gz -C ResShareDeployable
-cd ResShareDeployable
 
 # 5. Configure
 cp env.example .env
@@ -263,7 +243,7 @@ sudo certbot --nginx -d your-domain.com
 - **Ports**: 5000 (Flask), 4001 (IPFS P2P), 5001 (IPFS API), 8080 (IPFS Gateway)
 - **Persistence**: Data stored in Docker volumes (survives container restarts)
 
-## 📚 Full Documentation
+## Full Documentation
 
 For detailed instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md)
 
