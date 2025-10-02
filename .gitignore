@@ -54,3 +54,4 @@ bazel-genfiles
 bazel-testlogs
 MODULE.bazel.lock
 *.pem
+.env.production
