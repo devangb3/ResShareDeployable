@@ -74,9 +74,9 @@ def login_route():
         logger.info(f"LOGIN SUCCESS - User {username} logged in. Session: {dict(session)}")
         logger.info(f"LOGIN SUCCESS - Session cookie: {request.cookies.get('session')}")
         
-        root_json = get_kv(username + "_ROOT")
+        root_json = get_kv(username + " ROOT")
         root_json = json.loads(root_json) if root_json else {"name": "root", "is_folder": True, "children": {}}
-        share_list = get_kv(username + "_SHARE_MANAGER")
+        share_list = get_kv(username + " SHARE_MANAGER")
         share_list = json.loads(share_list) if share_list else {"shares": []}
         
         response = jsonify({
@@ -119,9 +119,9 @@ def signup_route():
         session.permanent = True
         logger.info(f"User {username} signed up and logged in successfully. Session: {dict(session)}")
         
-        root_json = get_kv(username + "_ROOT")
+        root_json = get_kv(username + " ROOT")
         root_json = json.loads(root_json) if root_json else {"name": "root", "is_folder": True, "children": {}}
-        share_list = get_kv(username + "_SHARE_MANAGER")
+        share_list = get_kv(username + " SHARE_MANAGER")
         share_list = json.loads(share_list) if share_list else {"shares": []}
         
         return jsonify({
@@ -149,7 +149,7 @@ def create_folder_route():
     folder_name = parts[-1]
     parent_path = "/".join(parts[:-1])
 
-    root = Node.from_json(get_kv(username + "_ROOT"))
+    root = Node.from_json(get_kv(username + " ROOT"))
 
     parent_node = root.find_node_by_path(parent_path) if parent_path else root
     if parent_node is None or not parent_node.is_folder:
@@ -161,7 +161,7 @@ def create_folder_route():
     new_folder = Node(name=folder_name, is_folder=True)
     parent_node.add_child(new_folder)
 
-    set_kv(username + "_ROOT", root.to_json())
+    set_kv(username + " ROOT", root.to_json())
 
     return jsonify({'result': ErrorCode.SUCCESS.name,
                     'root': root.to_json()}), 201
@@ -190,7 +190,7 @@ def share_route():
     if node.name == "root":
         return jsonify({'message': ErrorCode.SHARE_ROOT.name}), 400
 
-    target_sm = get_kv(target_username + "_SHARE_MANAGER")
+    target_sm = get_kv(target_username + " SHARE_MANAGER")
     if target_sm == "\n" or target_sm == "" or target_sm == " ":
         return jsonify({'message': ErrorCode.INVALID_USERNAME.name}), 400
 
@@ -199,7 +199,7 @@ def share_route():
     if result != ErrorCode.SUCCESS:
         return jsonify({'message': result.name}), 400
 
-    set_kv(target_username + "_SHARE_MANAGER", target_sm.to_json())
+    set_kv(target_username + " SHARE_MANAGER", target_sm.to_json())
 
     return jsonify({'message': ErrorCode.SUCCESS.name}), 200
 
@@ -216,8 +216,8 @@ def delete_user_route():
         return jsonify({'message': ErrorCode.INCORRECT_PASSWORD.name}), 401
 
     set_kv(username, "\n")
-    set_kv(username + "_ROOT", "\n")
-    set_kv(username + "_SHARE_MANAGER", "\n")
+    set_kv(username + " ROOT", "\n")
+    set_kv(username + " SHARE_MANAGER", "\n")
 
     session.pop(username)
 
@@ -265,7 +265,7 @@ def upload_route():
     if cid is None:
         return jsonify({'message': ErrorCode.IPFS_ERROR.name}), 500
 
-    root = Node.from_json(get_kv(username + "_ROOT"))
+    root = Node.from_json(get_kv(username + " ROOT"))
     target_node = root.find_node_by_path(path)
 
     if target_node is None:
@@ -276,7 +276,7 @@ def upload_route():
     if result != ErrorCode.SUCCESS:
         return jsonify({'message': result.name}), 400
 
-    set_kv(username + "_ROOT", root.to_json())
+    set_kv(username + " ROOT", root.to_json())
 
     rag_success = False
     supported_extensions = {'pdf', 'docx', 'txt'}
@@ -391,10 +391,10 @@ def download_route():
     is_shared = data.get('is_shared', False)
 
     if is_shared:
-        share_manager = ShareManager.from_json(get_kv(username + "_SHARE_MANAGER"))
+        share_manager = ShareManager.from_json(get_kv(username + " SHARE_MANAGER"))
         target_node = share_manager.find_node_by_path(path)
     else:
-        root = Node.from_json(get_kv(username + "_ROOT"))
+        root = Node.from_json(get_kv(username + " ROOT"))
         target_node = root.find_node_by_path(path)
 
     if target_node is None or target_node.is_folder:
