@@ -26,13 +26,19 @@ FILE_SIZE_LIMIT = 1024 * 1024  # 1 MB limit
 app = Flask(__name__)
 
 import os
-allowed_origins = ['http://localhost:5997', 'http://127.0.0.1:5997']
+from dotenv import load_dotenv
+load_dotenv()
+allowed_origins = ['http://localhost:5997', 'http://127.0.0.1:5997', 'https://res-share-deployable.vercel.app']
 additional_origins = os.environ.get('CORS_ORIGINS', '')
 if additional_origins:
     allowed_origins.extend(additional_origins.split(','))
 
 CORS(app, supports_credentials=True, origins=allowed_origins)
-app.secret_key = "e9fdf1d445d445bb7d12df76043e3b74617cf78934a99353efb3a7eb826dfb01"
+
+secret_key = os.environ.get('FLASK_SECRET_KEY')
+if not secret_key:
+    raise RuntimeError("FLASK_SECRET_KEY is required in production for session management")
+app.secret_key = secret_key
 
 def login_required(f):
     @wraps(f)
