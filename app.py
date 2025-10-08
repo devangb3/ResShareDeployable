@@ -31,7 +31,7 @@ load_dotenv()
 allowed_origins = ['http://localhost:5997', 'http://127.0.0.1:5997', 'https://res-share-deployable.vercel.app']
 additional_origins = os.environ.get('CORS_ORIGINS', '')
 if additional_origins:
-    allowed_origins.extend(additional_origins.split(','))
+    allowed_origins.extend([origin.strip() for origin in additional_origins.split(',') if origin.strip()])
 
 CORS(app, supports_credentials=True, origins=allowed_origins)
 
@@ -39,6 +39,11 @@ secret_key = os.environ.get('FLASK_SECRET_KEY')
 if not secret_key:
     raise RuntimeError("FLASK_SECRET_KEY is required in production for session management")
 app.secret_key = secret_key
+
+# Configure session cookies for cross-origin requests (Vercel <-> EC2/ngrok)
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'  # Allow cross-site cookies
+app.config['SESSION_COOKIE_SECURE'] = True      # Required for SameSite=None (HTTPS only)
+app.config['SESSION_COOKIE_HTTPONLY'] = True    # Security: prevent XSS attacks
 
 def login_required(f):
     @wraps(f)
