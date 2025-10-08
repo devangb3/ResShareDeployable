@@ -12,6 +12,7 @@ services:
       # Set your Google API key here or use .env file
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - FLASK_ENV=production
+      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY}
       # Add your Vercel or other frontend URLs (comma-separated)
       - CORS_ORIGINS=${CORS_ORIGINS:-}
     volumes:
