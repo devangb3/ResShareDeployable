@@ -1,6 +1,5 @@
 import hashlib
 import json
-import secrets
 from io import BytesIO
 
 from flask import Flask, request, jsonify, session, send_file
@@ -27,19 +26,21 @@ FILE_SIZE_LIMIT = 1024 * 1024  # 1 MB limit
 app = Flask(__name__)
 
 import os
-allowed_origins = ['http://localhost:5997', 'http://127.0.0.1:5997']
+from dotenv import load_dotenv
+load_dotenv()
+allowed_origins = ['http://localhost:5997', 'http://127.0.0.1:5997', 'https://res-share-deployable.vercel.app']
 additional_origins = os.environ.get('CORS_ORIGINS', '')
 if additional_origins:
-    allowed_origins.extend(additional_origins.split(','))
+    allowed_origins.extend([origin.strip() for origin in additional_origins.split(',') if origin.strip()])
 
-CORS(app, 
-     supports_credentials=True, 
-     origins=allowed_origins,
-     allow_headers=['Content-Type', 'Authorization'],
-     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
-app.secret_key = "e9fdf1d445d445bb7d12df76043e3b74617cf78934a99353efb3a7eb826dfb01"
+CORS(app, supports_credentials=True, origins=allowed_origins)
 
-# Configure session settings
+secret_key = os.environ.get('FLASK_SECRET_KEY')
+if not secret_key:
+    raise RuntimeError("FLASK_SECRET_KEY is required in production for session management")
+app.secret_key = secret_key
+
+# Configure session cookies for cross-origin requests (Vercel <-> EC2/ngrok)
 app.config['SESSION_COOKIE_SECURE'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
@@ -48,14 +49,11 @@ app.config['SESSION_COOKIE_NAME'] = 'session'
 app.config['SESSION_COOKIE_DOMAIN'] = None
 app.config['SESSION_COOKIE_PATH'] = '/'
 
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        logger.info(f"Session check - Session data: {dict(session)}")
-        logger.info(f"Session check - Cookies: {dict(request.cookies)}")
-        logger.info(f"Session check - Headers: {dict(request.headers)}")
         if 'username' not in session:
-            logger.warning(f"NOT_LOGGED_IN - No username in session")
             return jsonify({'message': ErrorCode.NOT_LOGGED_IN.name}), 401
         return f(*args, **kwargs)
     return decorated_function
@@ -70,41 +68,15 @@ def login_route():
 
     if result == ErrorCode.SUCCESS:
         session['username'] = username
-        session.permanent = True
-        logger.info(f"LOGIN SUCCESS - User {username} logged in. Session: {dict(session)}")
-        logger.info(f"LOGIN SUCCESS - Session cookie: {request.cookies.get('session')}")
-        
         root_json = get_kv(username + " ROOT")
-        root_json = json.loads(root_json) if root_json else {"name": "root", "is_folder": True, "children": {}}
+        root_json = json.loads(root_json)
         share_list = get_kv(username + " SHARE_MANAGER")
-        share_list = json.loads(share_list) if share_list else {"shares": []}
-        
-        response = jsonify({
+        share_list = json.loads(share_list)
+        return jsonify({
             'result': result.name,
             'root': root_json,
             'share_list': share_list
-        })
-        
-        session.modified = True
-        
-        # Debug: Check what's happening with the session
-        logger.info(f"Session data: {dict(session)}")
-        logger.info(f"Session permanent: {session.permanent}")
-        logger.info(f"Session ID exists: {'_id' in session}")
-        logger.info(f"Response headers: {dict(response.headers)}")
-        
-        # Force Flask to create a session ID if it doesn't exist
-        if not session.get('_id'):
-            session['_id'] = secrets.token_urlsafe(32)
-            logger.info(f"Created session ID: {session['_id']}")
-        
-        # Force session to be saved
-        session.modified = True
-        
-        # Debug final session state
-        logger.info(f"Final session data: {dict(session)}")
-        
-        return response, 200
+        }), 200
 
     return jsonify({'result': result.name}), 401
 
@@ -115,20 +87,9 @@ def signup_route():
     password = data['password']
     result = sign_up(username, password)
     if result == ErrorCode.SUCCESS:
-        session['username'] = username
-        session.permanent = True
-        logger.info(f"User {username} signed up and logged in successfully. Session: {dict(session)}")
-        
-        root_json = get_kv(username + " ROOT")
-        root_json = json.loads(root_json) if root_json else {"name": "root", "is_folder": True, "children": {}}
-        share_list = get_kv(username + " SHARE_MANAGER")
-        share_list = json.loads(share_list) if share_list else {"shares": []}
-        
         return jsonify({
             'ok': "true",
-            'result': result.name,
-            'root': root_json,
-            'share_list': share_list
+            'result': result.name
         }), 200
 
     return jsonify({'result': result.name}), 401
@@ -420,15 +381,6 @@ def download_route():
 @app.route('/', methods=['GET'])
 def health_route():
     return jsonify({'message': 'OK'}), 200
-
-@app.route('/session-test', methods=['GET'])
-def session_test():
-    """Test endpoint to check session status"""
-    return jsonify({
-        'session_data': dict(session),
-        'has_username': 'username' in session,
-        'cookies': dict(request.cookies)
-    }), 200
 
 if __name__ == '__main__':
     import os
