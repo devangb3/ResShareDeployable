@@ -1,5 +1,6 @@
 import hashlib
 import json
+import secrets
 from io import BytesIO
 
 from flask import Flask, request, jsonify, session, send_file
@@ -31,13 +32,30 @@ additional_origins = os.environ.get('CORS_ORIGINS', '')
 if additional_origins:
     allowed_origins.extend(additional_origins.split(','))
 
-CORS(app, supports_credentials=True, origins=allowed_origins)
+CORS(app, 
+     supports_credentials=True, 
+     origins=allowed_origins,
+     allow_headers=['Content-Type', 'Authorization'],
+     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
 app.secret_key = "e9fdf1d445d445bb7d12df76043e3b74617cf78934a99353efb3a7eb826dfb01"
+
+# Configure session settings
+app.config['SESSION_COOKIE_SECURE'] = False
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
+app.config['SESSION_COOKIE_NAME'] = 'session'
+app.config['SESSION_COOKIE_DOMAIN'] = None
+app.config['SESSION_COOKIE_PATH'] = '/'
 
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        logger.info(f"Session check - Session data: {dict(session)}")
+        logger.info(f"Session check - Cookies: {dict(request.cookies)}")
+        logger.info(f"Session check - Headers: {dict(request.headers)}")
         if 'username' not in session:
+            logger.warning(f"NOT_LOGGED_IN - No username in session")
             return jsonify({'message': ErrorCode.NOT_LOGGED_IN.name}), 401
         return f(*args, **kwargs)
     return decorated_function
@@ -52,15 +70,41 @@ def login_route():
 
     if result == ErrorCode.SUCCESS:
         session['username'] = username
-        root_json = get_kv(username + " ROOT")
-        root_json = json.loads(root_json)
-        share_list = get_kv(username + " SHARE_MANAGER")
-        share_list = json.loads(share_list)
-        return jsonify({
+        session.permanent = True
+        logger.info(f"LOGIN SUCCESS - User {username} logged in. Session: {dict(session)}")
+        logger.info(f"LOGIN SUCCESS - Session cookie: {request.cookies.get('session')}")
+        
+        root_json = get_kv(username + "_ROOT")
+        root_json = json.loads(root_json) if root_json else {"name": "root", "is_folder": True, "children": {}}
+        share_list = get_kv(username + "_SHARE_MANAGER")
+        share_list = json.loads(share_list) if share_list else {"shares": []}
+        
+        response = jsonify({
             'result': result.name,
             'root': root_json,
             'share_list': share_list
-        }), 200
+        })
+        
+        session.modified = True
+        
+        # Debug: Check what's happening with the session
+        logger.info(f"Session data: {dict(session)}")
+        logger.info(f"Session permanent: {session.permanent}")
+        logger.info(f"Session ID exists: {'_id' in session}")
+        logger.info(f"Response headers: {dict(response.headers)}")
+        
+        # Force Flask to create a session ID if it doesn't exist
+        if not session.get('_id'):
+            session['_id'] = secrets.token_urlsafe(32)
+            logger.info(f"Created session ID: {session['_id']}")
+        
+        # Force session to be saved
+        session.modified = True
+        
+        # Debug final session state
+        logger.info(f"Final session data: {dict(session)}")
+        
+        return response, 200
 
     return jsonify({'result': result.name}), 401
 
@@ -71,9 +115,20 @@ def signup_route():
     password = data['password']
     result = sign_up(username, password)
     if result == ErrorCode.SUCCESS:
+        session['username'] = username
+        session.permanent = True
+        logger.info(f"User {username} signed up and logged in successfully. Session: {dict(session)}")
+        
+        root_json = get_kv(username + "_ROOT")
+        root_json = json.loads(root_json) if root_json else {"name": "root", "is_folder": True, "children": {}}
+        share_list = get_kv(username + "_SHARE_MANAGER")
+        share_list = json.loads(share_list) if share_list else {"shares": []}
+        
         return jsonify({
             'ok': "true",
-            'result': result.name
+            'result': result.name,
+            'root': root_json,
+            'share_list': share_list
         }), 200
 
     return jsonify({'result': result.name}), 401
@@ -94,7 +149,7 @@ def create_folder_route():
     folder_name = parts[-1]
     parent_path = "/".join(parts[:-1])
 
-    root = Node.from_json(get_kv(username + " ROOT"))
+    root = Node.from_json(get_kv(username + "_ROOT"))
 
     parent_node = root.find_node_by_path(parent_path) if parent_path else root
     if parent_node is None or not parent_node.is_folder:
@@ -106,7 +161,7 @@ def create_folder_route():
     new_folder = Node(name=folder_name, is_folder=True)
     parent_node.add_child(new_folder)
 
-    set_kv(username + " ROOT", root.to_json())
+    set_kv(username + "_ROOT", root.to_json())
 
     return jsonify({'result': ErrorCode.SUCCESS.name,
                     'root': root.to_json()}), 201
@@ -135,7 +190,7 @@ def share_route():
     if node.name == "root":
         return jsonify({'message': ErrorCode.SHARE_ROOT.name}), 400
 
-    target_sm = get_kv(target_username + " SHARE_MANAGER")
+    target_sm = get_kv(target_username + "_SHARE_MANAGER")
     if target_sm == "\n" or target_sm == "" or target_sm == " ":
         return jsonify({'message': ErrorCode.INVALID_USERNAME.name}), 400
 
@@ -144,7 +199,7 @@ def share_route():
     if result != ErrorCode.SUCCESS:
         return jsonify({'message': result.name}), 400
 
-    set_kv(target_username + " SHARE_MANAGER", target_sm.to_json())
+    set_kv(target_username + "_SHARE_MANAGER", target_sm.to_json())
 
     return jsonify({'message': ErrorCode.SUCCESS.name}), 200
 
@@ -161,8 +216,8 @@ def delete_user_route():
         return jsonify({'message': ErrorCode.INCORRECT_PASSWORD.name}), 401
 
     set_kv(username, "\n")
-    set_kv(username + " ROOT", "\n")
-    set_kv(username + " SHARE_MANAGER", "\n")
+    set_kv(username + "_ROOT", "\n")
+    set_kv(username + "_SHARE_MANAGER", "\n")
 
     session.pop(username)
 
@@ -210,7 +265,7 @@ def upload_route():
     if cid is None:
         return jsonify({'message': ErrorCode.IPFS_ERROR.name}), 500
 
-    root = Node.from_json(get_kv(username + " ROOT"))
+    root = Node.from_json(get_kv(username + "_ROOT"))
     target_node = root.find_node_by_path(path)
 
     if target_node is None:
@@ -221,7 +276,7 @@ def upload_route():
     if result != ErrorCode.SUCCESS:
         return jsonify({'message': result.name}), 400
 
-    set_kv(username + " ROOT", root.to_json())
+    set_kv(username + "_ROOT", root.to_json())
 
     rag_success = False
     supported_extensions = {'pdf', 'docx', 'txt'}
@@ -336,10 +391,10 @@ def download_route():
     is_shared = data.get('is_shared', False)
 
     if is_shared:
-        share_manager = ShareManager.from_json(get_kv(username + " SHARE_MANAGER"))
+        share_manager = ShareManager.from_json(get_kv(username + "_SHARE_MANAGER"))
         target_node = share_manager.find_node_by_path(path)
     else:
-        root = Node.from_json(get_kv(username + " ROOT"))
+        root = Node.from_json(get_kv(username + "_ROOT"))
         target_node = root.find_node_by_path(path)
 
     if target_node is None or target_node.is_folder:
@@ -365,6 +420,15 @@ def download_route():
 @app.route('/', methods=['GET'])
 def health_route():
     return jsonify({'message': 'OK'}), 200
+
+@app.route('/session-test', methods=['GET'])
+def session_test():
+    """Test endpoint to check session status"""
+    return jsonify({
+        'session_data': dict(session),
+        'has_username': 'username' in session,
+        'cookies': dict(request.cookies)
+    }), 200
 
 if __name__ == '__main__':
     import os
