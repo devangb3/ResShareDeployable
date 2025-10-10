@@ -33,7 +33,6 @@ additional_origins = os.environ.get('CORS_ORIGINS', '')
 if additional_origins:
     allowed_origins.extend([origin.strip() for origin in additional_origins.split(',') if origin.strip()])
 
-# Temporarily allow all origins for debugging
 CORS(app, supports_credentials=True)
 
 secret_key = os.environ.get('FLASK_SECRET_KEY')
