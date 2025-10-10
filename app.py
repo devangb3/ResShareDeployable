@@ -33,7 +33,8 @@ additional_origins = os.environ.get('CORS_ORIGINS', '')
 if additional_origins:
     allowed_origins.extend([origin.strip() for origin in additional_origins.split(',') if origin.strip()])
 
-CORS(app, supports_credentials=True, origins=allowed_origins)
+# Temporarily allow all origins for debugging
+CORS(app, supports_credentials=True)
 
 secret_key = os.environ.get('FLASK_SECRET_KEY')
 if not secret_key:
@@ -42,8 +43,8 @@ app.secret_key = secret_key
 
 # Configure session cookies for cross-origin requests (Vercel <-> EC2/ngrok)
 app.config['SESSION_COOKIE_SECURE'] = False
-app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_HTTPONLY'] = False  # Allow JavaScript access for cross-origin
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'  # Allow cross-origin cookies
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
 app.config['SESSION_COOKIE_NAME'] = 'session'
 app.config['SESSION_COOKIE_DOMAIN'] = None
@@ -58,7 +59,7 @@ def login_required(f):
     return decorated_function
 
 @app.route('/login', methods=['POST'])
-def login_route():
+def login_route():    
     data = request.get_json()
     username = data['username']
     password = data['password']
@@ -67,15 +68,20 @@ def login_route():
 
     if result == ErrorCode.SUCCESS:
         session['username'] = username
+        session.permanent = True
         root_json = get_kv(username + " ROOT")
         root_json = json.loads(root_json)
         share_list = get_kv(username + " SHARE_MANAGER")
         share_list = json.loads(share_list)
-        return jsonify({
+        
+        response = jsonify({
             'result': result.name,
             'root': root_json,
             'share_list': share_list
-        }), 200
+        })
+        
+        logger.info(f"Response headers: {dict(response.headers)}")
+        return response, 200
 
     return jsonify({'result': result.name}), 401
 

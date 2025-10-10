@@ -1,8 +1,13 @@
+import os
 import requests
 import json
 from typing import Union
 
-API_URL = "https://crow.resilientdb.com"
+from dotenv import load_dotenv
+load_dotenv()
+
+API_URL = os.environ.get('KV_SERVICE_URL')
+STORE_TYPE = os.environ.get('STORAGE_TYPE', 'memory')
 
 class KVService:
     def __init__(self, store_type: str = "memory"):
@@ -95,7 +100,7 @@ class KVService:
                 print(f"GET EXCEPTION: {e}")
                 return ""
 
-_kv_service = KVService(store_type="resilientdb")
+_kv_service = KVService(store_type=STORE_TYPE)
 
 def set_kv(key: str, value: str) -> bool:
     return _kv_service.set_kv(key, value)
