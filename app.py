@@ -49,7 +49,6 @@ app.config['SESSION_COOKIE_NAME'] = 'session'
 app.config['SESSION_COOKIE_DOMAIN'] = None
 app.config['SESSION_COOKIE_PATH'] = '/'
 
-
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):

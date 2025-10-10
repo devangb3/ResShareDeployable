@@ -42,7 +42,6 @@ def validate_file_size(file_size: int, max_size: int = 1024 * 1024) -> Tuple[boo
     Returns:
         tuple: (is_valid, error_message)
     """
-    return True, ""
     if file_size > max_size:
         max_size_mb = max_size / (1024 * 1024)
         return False, f"File size exceeds the maximum limit of {max_size_mb} MB"
