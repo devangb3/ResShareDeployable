@@ -41,9 +41,13 @@ if not secret_key:
 app.secret_key = secret_key
 
 # Configure session cookies for cross-origin requests (Vercel <-> EC2/ngrok)
-app.config['SESSION_COOKIE_SAMESITE'] = 'None'  # Allow cross-site cookies
-app.config['SESSION_COOKIE_SECURE'] = True      # Required for SameSite=None (HTTPS only)
-app.config['SESSION_COOKIE_HTTPONLY'] = True    # Security: prevent XSS attacks
+app.config['SESSION_COOKIE_SECURE'] = False
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
+app.config['SESSION_COOKIE_NAME'] = 'session'
+app.config['SESSION_COOKIE_DOMAIN'] = None
+app.config['SESSION_COOKIE_PATH'] = '/'
 
 def login_required(f):
     @wraps(f)
