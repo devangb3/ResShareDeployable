@@ -40,10 +40,15 @@ if not secret_key:
     raise RuntimeError("FLASK_SECRET_KEY is required in production for session management")
 app.secret_key = secret_key
 
+is_development = os.environ.get('FLASK_ENV', 'development') == 'development'
+if is_development:
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+else :
+    app.config['SESSION_COOKIE_HTTPONLY'] = False  # Allow JavaScript access for cross-origin
+    app.config['SESSION_COOKIE_SAMESITE'] = 'None' #Allow cross-origin cookies
 # Configure session cookies for cross-origin requests (Vercel <-> EC2/ngrok)
 app.config['SESSION_COOKIE_SECURE'] = False
-app.config['SESSION_COOKIE_HTTPONLY'] = False  # Allow JavaScript access for cross-origin
-app.config['SESSION_COOKIE_SAMESITE'] = 'None'  # Allow cross-origin cookies
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
 app.config['SESSION_COOKIE_NAME'] = 'session'
 app.config['SESSION_COOKIE_DOMAIN'] = None
@@ -53,6 +58,7 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'username' not in session:
+            logger.info("User not logged in")
             return jsonify({'message': ErrorCode.NOT_LOGGED_IN.name}), 401
         return f(*args, **kwargs)
     return decorated_function
