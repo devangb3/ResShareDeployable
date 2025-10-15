@@ -217,6 +217,9 @@ def upload_route():
     path = request.form['path']
     username = session['username']
     file = request.files['file']
+    raw_skip_flag = request.form.get('skip_ai_processing', 'false')
+    skip_ai_processing = raw_skip_flag.lower() == 'true'
+    logger.info(f"Upload request: user={username}, file={file.filename if file else 'N/A'}, skip_ai_processing_raw='{raw_skip_flag}', parsed={skip_ai_processing}")
 
     if file.filename == '':
         return jsonify({'message': ErrorCode.INVALID_REQUEST.name}), 400
@@ -250,30 +253,38 @@ def upload_route():
     set_kv(username + " ROOT", root.to_json())
 
     rag_success = False
-    supported_extensions = {'pdf', 'docx', 'txt'}
-    file_extension = filename.lower().split('.')[-1] if '.' in filename else ''
+    rag_skipped = False
     
-    if file_extension in supported_extensions:
-        try:
-            file_stream.seek(0)
-            file_content = file_stream.read()
-            
-            rag_manager = get_rag_manager()
-            rag_success = rag_manager.process_file_for_rag(file_content, filename, username, cid)
-            
-            if rag_success:
-                logger.info(f"Successfully processed {filename} for RAG for user {username}")
-            else:
-                logger.warning(f"Failed to process {filename} for RAG for user {username}")
+    if not skip_ai_processing:
+        supported_extensions = {'pdf', 'docx', 'txt'}
+        file_extension = filename.lower().split('.')[-1] if '.' in filename else ''
+        
+        if file_extension in supported_extensions:
+            try:
+                file_stream.seek(0)
+                file_content = file_stream.read()
                 
-        except Exception as e:
-            logger.error(f"RAG processing error for {filename}: {e}")
-            rag_success = False
+                rag_manager = get_rag_manager()
+                rag_success = rag_manager.process_file_for_rag(file_content, filename, username, cid)
+                
+                if rag_success:
+                    logger.info(f"Successfully processed {filename} for RAG for user {username}")
+                else:
+                    logger.warning(f"Failed to process {filename} for RAG for user {username}")
+                    
+            except Exception as e:
+                logger.error(f"RAG processing error for {filename}: {e}")
+                rag_success = False
+    else:
+        rag_skipped = True
+        logger.info(f"RAG processing skipped for {filename} for user {username} (AI mode disabled)")
 
     response_data = {
         'message': ErrorCode.SUCCESS.name, 
         'root': root.to_json(),
-        'rag_processed': rag_success
+        'rag_processed': rag_success,
+        'rag_skipped': rag_skipped,
+        'skip_ai_processing': skip_ai_processing
     }
     
     return jsonify(response_data), 200
