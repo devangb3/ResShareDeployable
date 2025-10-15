@@ -44,7 +44,7 @@ is_development = os.environ.get('FLASK_ENV', 'development') == 'development'
 if is_development:
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-else :
+else:
     app.config['SESSION_COOKIE_HTTPONLY'] = False  # Allow JavaScript access for cross-origin
     app.config['SESSION_COOKIE_SAMESITE'] = 'None' #Allow cross-origin cookies
 # Configure session cookies for cross-origin requests (Vercel <-> EC2/ngrok)
@@ -190,7 +190,7 @@ def delete_user_route():
     set_kv(username + " ROOT", "\n")
     set_kv(username + " SHARE_MANAGER", "\n")
 
-    session.pop(username)
+    session.pop('username')
 
     return jsonify({'message': ErrorCode.SUCCESS.name}), 200
 

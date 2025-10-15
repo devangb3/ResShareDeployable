@@ -190,7 +190,6 @@ export const utils = {
   },
 
   validateFileSize: (file, maxSizeMB = 1) => {
-    return { isValid: true, error: null };
     const maxSizeBytes = maxSizeMB * 1024 * 1024;
     if (file.size > maxSizeBytes) {
       return {
