@@ -110,21 +110,26 @@ echo "IPFS daemon started with PID: $IPFS_PID"
 echo "Waiting for IPFS to be ready..."
 IPFS_READY=false
 for i in {1..30}; do
-    if ipfs id > /dev/null 2>&1; then
+    # Check if IPFS process is still running first
+    if ! kill -0 $IPFS_PID 2>/dev/null; then
+        echo "=========================================="
+        echo "ERROR: IPFS daemon process died!"
+        echo "=========================================="
+        echo "Last 50 lines of IPFS log:"
+        tail -50 /app/ipfs.log
+        echo "=========================================="
+        exit 1
+    fi
+
+    # Check if IPFS API is responding (this is the real test)
+    if curl -s --max-time 2 http://localhost:5001/api/v0/version > /dev/null 2>&1; then
         echo "✓ IPFS is ready!"
         IPFS_READY=true
-        ipfs id
+        curl -s http://localhost:5001/api/v0/id | head -20
         break
     fi
     echo "Waiting for IPFS... ($i/30)"
-    
-    # Check if IPFS process is still running
-    if ! kill -0 $IPFS_PID 2>/dev/null; then
-        echo "ERROR: IPFS daemon process died! Check /app/ipfs.log"
-        tail -50 /app/ipfs.log
-        exit 1
-    fi
-    
+
     sleep 2
 done
 
@@ -198,7 +203,14 @@ fi
 
 # Check cluster status
 echo "Checking IPFS Cluster status..."
-curl -s http://localhost:9094/api/v0/id | head -20
+CLUSTER_STATUS=$(curl -s http://localhost:9094/api/v0/id)
+if echo "$CLUSTER_STATUS" | grep -q "id"; then
+    echo "✓ IPFS Cluster status OK"
+    echo "$CLUSTER_STATUS" | head -20
+else
+    echo "⚠ IPFS Cluster API responded but may still be initializing"
+    echo "$CLUSTER_STATUS"
+fi
 
 # Activate conda environment and start Flask application
 echo "=========================================="
