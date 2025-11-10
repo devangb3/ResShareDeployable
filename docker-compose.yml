@@ -8,6 +8,8 @@ services:
     container_name: resshare-backend
     ports:
       - "5000:5000"
+      - "8080:8080"  # IPFS Gateway
+      - "9094:9094"  # IPFS Cluster API
     environment:
       # Set your Google API key here or use .env file
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
@@ -26,11 +28,11 @@ services:
       - vector_db:/app/backend/vector_db
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      test: ["CMD", "curl", "-f", "http://localhost:5000/ && curl -f http://localhost:8080/ipfs/QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG/readme && curl -f http://localhost:9094/api/v0/status"]
       interval: 30s
-      timeout: 10s
+      timeout: 15s
       retries: 3
-      start_period: 60s
+      start_period: 120s
 
 volumes:
   ipfs_data:
