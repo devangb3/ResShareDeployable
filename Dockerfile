@@ -103,7 +103,7 @@ ENV PYTHONUNBUFFERED=1
 ENV FLASK_APP=app.py
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
     CMD curl -f http://localhost:5000/ || exit 1
 
 # Run the entrypoint script
