@@ -25,7 +25,7 @@ import { authAPI } from '../utils/api';
 const LoginPage = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const { darkMode, toggleTheme } = useThemeMode();
+  const { darkMode } = useThemeMode();
   
   const [formData, setFormData] = useState({
     username: '',
