@@ -339,8 +339,10 @@ export const utils = {
   },
 };
 
-export default {
+const api = {
   authAPI,
   fileAPI,
   utils,
-}; 
+};
+
+export default api; 

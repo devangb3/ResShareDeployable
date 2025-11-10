@@ -59,7 +59,7 @@ import { fileAPI, utils } from '../utils/api';
 const FileExplorer = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, rootData, setRootData, shareList } = useAuth();
+  const { rootData, setRootData, shareList } = useAuth();
   
   const [currentPath, setCurrentPath] = useState('');
   const [currentNode, setCurrentNode] = useState(null);

@@ -28,7 +28,6 @@ import {
   Switch,
 } from '@mui/material';
 import {
-  Add,
   CreateNewFolder,
   Upload,
   Folder,
@@ -39,7 +38,6 @@ import {
   Delete,
   MoreVert,
   Download,
-  Visibility,
   Psychology,
   SmartToy,
 } from '@mui/icons-material';
@@ -111,10 +109,6 @@ const HomePage = () => {
       totalFolders: folders,
       sharedItems: sharedItemsCount,
     });
-  };
-
-  const handleSpeedDialToggle = () => {
-    setSpeedDialOpen(!speedDialOpen);
   };
 
   const handleCreateFolder = () => {
@@ -422,19 +416,6 @@ const HomePage = () => {
         message: error.message || 'Failed to download file',
         severity: 'error',
       });
-    }
-    handleMenuClose();
-  };
-
-  const handleView = () => {
-    if (!selectedItem) return;
-    
-    if (selectedItem.isShared) {
-      // For shared items, navigate to the shared item's path
-      const path = `${selectedItem.sharedBy}/${selectedItem.name}`;
-      navigate(`/explorer/${path}`);
-    } else {
-      navigate(`/explorer/${selectedItem.name}`);
     }
     handleMenuClose();
   };
