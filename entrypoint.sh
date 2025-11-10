@@ -39,6 +39,18 @@ ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
 ipfs config Addresses.Swarm --json '["/ip4/0.0.0.0/tcp/4001", "/ip6/::/tcp/4001", "/ip4/0.0.0.0/udp/4001/quic", "/ip6/::/udp/4001/quic"]'
 echo "✓ IPFS configured"
 
+# Remove stale lock file if it exists
+if [ -f /root/.ipfs/repo.lock ]; then
+    echo "Removing stale IPFS lock file..."
+    rm -f /root/.ipfs/repo.lock
+fi
+
+# Remove stale API file if it exists
+if [ -f /root/.ipfs/api ]; then
+    echo "Removing stale IPFS API file..."
+    rm -f /root/.ipfs/api
+fi
+
 # Initialize IPFS Cluster if not already initialized
 if [ ! -f /root/.ipfs-cluster/service.json ]; then
     echo "Initializing IPFS Cluster..."
