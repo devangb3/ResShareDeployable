@@ -44,11 +44,11 @@ is_development = os.environ.get('FLASK_ENV', 'development') == 'development'
 if is_development:
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['SESSION_COOKIE_SECURE'] = False
 else:
-    app.config['SESSION_COOKIE_HTTPONLY'] = False  # Allow JavaScript access for cross-origin
-    app.config['SESSION_COOKIE_SAMESITE'] = 'None' #Allow cross-origin cookies
-# Configure session cookies for cross-origin requests (Vercel <-> EC2/ngrok)
-app.config['SESSION_COOKIE_SECURE'] = False
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'None'  # Required for cross-origin cookies
+    app.config['SESSION_COOKIE_SECURE'] = True  # Required when SameSite=None
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
 app.config['SESSION_COOKIE_NAME'] = 'session'
 app.config['SESSION_COOKIE_DOMAIN'] = None
