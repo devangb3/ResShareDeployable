@@ -33,7 +33,7 @@ additional_origins = os.environ.get('CORS_ORIGINS', '')
 if additional_origins:
     allowed_origins.extend([origin.strip() for origin in additional_origins.split(',') if origin.strip()])
 
-CORS(app, supports_credentials=True)
+CORS(app, origins=allowed_origins, supports_credentials=True)
 
 secret_key = os.environ.get('FLASK_SECRET_KEY')
 if not secret_key:
