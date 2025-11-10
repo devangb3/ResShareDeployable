@@ -21,33 +21,71 @@ ipfs version || echo "ERROR: Cannot run ipfs version"
 if [ ! -f /root/.ipfs/config ]; then
     echo "Initializing IPFS..."
     ipfs init
-    # Configure IPFS to listen on all interfaces
-    ipfs config Addresses.API /ip4/0.0.0.0/tcp/5001
-    ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
-    ipfs config Addresses.Swarm --json '["/ip4/0.0.0.0/tcp/4001", "/ip6/::/tcp/4001", "/ip4/0.0.0.0/udp/4001/quic", "/ip6/::/udp/4001/quic"]'
+    if [ $? -ne 0 ]; then
+        echo "=========================================="
+        echo "ERROR: Failed to initialize IPFS"
+        echo "=========================================="
+        exit 1
+    fi
+    echo "✓ IPFS initialized successfully"
 else
-    echo "IPFS already initialized"
-    # Ensure IPFS is configured to listen on all interfaces
-    ipfs config Addresses.API /ip4/0.0.0.0/tcp/5001
-    ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
+    echo "IPFS already initialized, verifying config..."
 fi
+
+# Configure IPFS to listen on all interfaces (always run this)
+echo "Configuring IPFS..."
+ipfs config Addresses.API /ip4/0.0.0.0/tcp/5001
+ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
+ipfs config Addresses.Swarm --json '["/ip4/0.0.0.0/tcp/4001", "/ip6/::/tcp/4001", "/ip4/0.0.0.0/udp/4001/quic", "/ip6/::/udp/4001/quic"]'
+echo "✓ IPFS configured"
 
 # Initialize IPFS Cluster if not already initialized
 if [ ! -f /root/.ipfs-cluster/service.json ]; then
     echo "Initializing IPFS Cluster..."
     ipfs-cluster-service init --consensus crdt
     if [ $? -ne 0 ]; then
+        echo "=========================================="
         echo "ERROR: Failed to initialize IPFS Cluster"
+        echo "=========================================="
         exit 1
     fi
+    echo "✓ IPFS Cluster initialized successfully"
 else
-    echo "IPFS Cluster already initialized"
+    echo "IPFS Cluster already initialized, verifying config..."
 fi
 
-# Configure cluster to listen on all interfaces and use CRDT consensus
+# Configure cluster to listen on all interfaces (edit JSON config)
 echo "Configuring IPFS Cluster..."
-ipfs-cluster-service config api.restapi.http_listen_multiaddress /ip4/0.0.0.0/tcp/9094
-ipfs-cluster-service config cluster.listen_multiaddress /ip4/0.0.0.0/tcp/9096
+CLUSTER_CONFIG="/root/.ipfs-cluster/service.json"
+
+if [ ! -f "$CLUSTER_CONFIG" ]; then
+    echo "=========================================="
+    echo "ERROR: IPFS Cluster config file not found at $CLUSTER_CONFIG"
+    echo "This means initialization failed"
+    echo "=========================================="
+    exit 1
+fi
+
+# Use jq to modify the configuration if available, otherwise use sed
+if command -v jq &> /dev/null; then
+    echo "Using jq to configure cluster..."
+    jq '.api.restapi.http_listen_multiaddress = "/ip4/0.0.0.0/tcp/9094" | .cluster.listen_multiaddress = ["/ip4/0.0.0.0/tcp/9096"]' "$CLUSTER_CONFIG" > "$CLUSTER_CONFIG.tmp" && mv "$CLUSTER_CONFIG.tmp" "$CLUSTER_CONFIG"
+else
+    echo "Using sed to configure cluster..."
+    # Update API listen address
+    sed -i 's|"http_listen_multiaddress": "[^"]*"|"http_listen_multiaddress": "/ip4/0.0.0.0/tcp/9094"|g' "$CLUSTER_CONFIG"
+    # Update cluster listen address
+    sed -i 's|"listen_multiaddress": \[[^\]]*\]|"listen_multiaddress": ["/ip4/0.0.0.0/tcp/9096"]|g' "$CLUSTER_CONFIG"
+fi
+
+if [ $? -ne 0 ]; then
+    echo "=========================================="
+    echo "ERROR: Failed to configure IPFS Cluster"
+    echo "=========================================="
+    exit 1
+fi
+
+echo "✓ IPFS Cluster configured"
 
 # Start IPFS daemon in background with detailed logging
 echo "Starting IPFS daemon..."
