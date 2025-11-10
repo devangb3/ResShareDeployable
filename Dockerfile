@@ -19,6 +19,7 @@ RUN apt-get update && apt-get install -y \
     git \
     ca-certificates \
     bzip2 \
+    jq \
     && rm -rf /var/lib/apt/lists/*
 
 # Set gcc-11 and g++-11 as default
@@ -103,7 +104,7 @@ ENV PYTHONUNBUFFERED=1
 ENV FLASK_APP=app.py
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
     CMD curl -f http://localhost:5000/ || exit 1
 
 # Run the entrypoint script
