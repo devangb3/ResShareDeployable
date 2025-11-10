@@ -5,12 +5,10 @@ set -e
 LOG_FILE="/app/startup.log"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
-echo "=========================================="
 echo "Starting ResShare Backend..."
 echo "Current directory: $(pwd)"
 echo "Current user: $(whoami)"
 echo "Date: $(date)"
-echo "=========================================="
 
 # Check if IPFS is installed
 echo "Checking IPFS installation..."
@@ -22,12 +20,10 @@ if [ ! -f /root/.ipfs/config ]; then
     echo "Initializing IPFS..."
     ipfs init
     if [ $? -ne 0 ]; then
-        echo "=========================================="
         echo "ERROR: Failed to initialize IPFS"
-        echo "=========================================="
         exit 1
     fi
-    echo "✓ IPFS initialized successfully"
+    echo "IPFS initialized successfully"
 else
     echo "IPFS already initialized, verifying config..."
 fi
@@ -37,7 +33,7 @@ echo "Configuring IPFS..."
 ipfs config Addresses.API /ip4/0.0.0.0/tcp/5001
 ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
 ipfs config Addresses.Swarm --json '["/ip4/0.0.0.0/tcp/4001", "/ip6/::/tcp/4001", "/ip4/0.0.0.0/udp/4001/quic", "/ip6/::/udp/4001/quic"]'
-echo "✓ IPFS configured"
+echo "IPFS configured"
 
 # Remove stale lock file if it exists
 if [ -f /root/.ipfs/repo.lock ]; then
@@ -56,12 +52,10 @@ if [ ! -f /root/.ipfs-cluster/service.json ]; then
     echo "Initializing IPFS Cluster..."
     ipfs-cluster-service init --consensus crdt
     if [ $? -ne 0 ]; then
-        echo "=========================================="
         echo "ERROR: Failed to initialize IPFS Cluster"
-        echo "=========================================="
         exit 1
     fi
-    echo "✓ IPFS Cluster initialized successfully"
+    echo "IPFS Cluster initialized successfully"
 else
     echo "IPFS Cluster already initialized, verifying config..."
 fi
@@ -71,10 +65,8 @@ echo "Configuring IPFS Cluster..."
 CLUSTER_CONFIG="/root/.ipfs-cluster/service.json"
 
 if [ ! -f "$CLUSTER_CONFIG" ]; then
-    echo "=========================================="
     echo "ERROR: IPFS Cluster config file not found at $CLUSTER_CONFIG"
     echo "This means initialization failed"
-    echo "=========================================="
     exit 1
 fi
 
@@ -91,9 +83,7 @@ else
 fi
 
 if [ $? -ne 0 ]; then
-    echo "=========================================="
     echo "ERROR: Failed to configure IPFS Cluster"
-    echo "=========================================="
     exit 1
 fi
 
@@ -112,12 +102,9 @@ IPFS_READY=false
 for i in {1..30}; do
     # Check if IPFS process is still running first
     if ! kill -0 $IPFS_PID 2>/dev/null; then
-        echo "=========================================="
         echo "ERROR: IPFS daemon process died!"
-        echo "=========================================="
         echo "Last 50 lines of IPFS log:"
         tail -50 /app/ipfs.log
-        echo "=========================================="
         exit 1
     fi
 
@@ -162,15 +149,11 @@ CLUSTER_READY=false
 for i in {1..30}; do
     # Check if cluster process died
     if ! kill -0 $CLUSTER_PID 2>/dev/null; then
-        echo "=========================================="
         echo "ERROR: IPFS Cluster process died!"
-        echo "=========================================="
         echo "Last 100 lines of IPFS Cluster log:"
         tail -100 /app/ipfs-cluster.log
-        echo "=========================================="
         echo "DEPLOYMENT FAILED: IPFS Cluster is required"
         echo "Please check the logs above for details"
-        echo "=========================================="
         exit 1
     fi
 
@@ -186,18 +169,14 @@ for i in {1..30}; do
 done
 
 if [ "$CLUSTER_READY" = false ]; then
-    echo "=========================================="
     echo "ERROR: IPFS Cluster failed to start after 60 seconds"
-    echo "=========================================="
     echo "Last 100 lines of IPFS Cluster log:"
     tail -100 /app/ipfs-cluster.log
-    echo "=========================================="
     echo "DEPLOYMENT FAILED: IPFS Cluster is required"
     echo "Common issues:"
     echo "  1. Port 9094 already in use"
     echo "  2. Insufficient memory (need at least 8GB)"
     echo "  3. Corrupted cluster data (try: docker compose down -v)"
-    echo "=========================================="
     exit 1
 fi
 
@@ -205,15 +184,14 @@ fi
 echo "Checking IPFS Cluster status..."
 CLUSTER_STATUS=$(curl -s http://localhost:9094/api/v0/id)
 if echo "$CLUSTER_STATUS" | grep -q "id"; then
-    echo "✓ IPFS Cluster status OK"
+    echo "IPFS Cluster status OK"
     echo "$CLUSTER_STATUS" | head -20
 else
-    echo "⚠ IPFS Cluster API responded but may still be initializing"
+    echo "IPFS Cluster API responded but may still be initializing"
     echo "$CLUSTER_STATUS"
 fi
 
 # Activate conda environment and start Flask application
-echo "=========================================="
 echo "Starting Flask application..."
 echo "Python version:"
 cd /app
@@ -221,7 +199,6 @@ source /opt/conda/etc/profile.d/conda.sh
 conda activate reschat_venv
 python --version
 echo "Flask will log to stdout/stderr"
-echo "=========================================="
 
 # Start Flask in foreground
 exec python app.py
