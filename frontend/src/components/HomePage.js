@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Container,
   Grid,
@@ -69,16 +69,10 @@ const HomePage = () => {
     return saved !== null ? JSON.parse(saved) : true;
   });
 
-  useEffect(() => {
-    if (rootData) {
-      calculateStats(rootData);
-    }
-  }, [rootData, shareList]);
-
-  const calculateStats = (node) => {
+  const calculateStats = useCallback((node) => {
     let files = 0;
     let folders = 0;
-    
+
     const traverse = (currentNode) => {
       if (currentNode.is_folder) {
         folders++;
@@ -109,7 +103,13 @@ const HomePage = () => {
       totalFolders: folders,
       sharedItems: sharedItemsCount,
     });
-  };
+  }, [shareList]);
+
+  useEffect(() => {
+    if (rootData) {
+      calculateStats(rootData);
+    }
+  }, [rootData, calculateStats]);
 
   const handleCreateFolder = () => {
     setCreateFolderOpen(true);
