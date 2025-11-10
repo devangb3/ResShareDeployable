@@ -21,16 +21,27 @@ ipfs version || echo "ERROR: Cannot run ipfs version"
 if [ ! -f /root/.ipfs/config ]; then
     echo "Initializing IPFS..."
     ipfs init
+    # Configure IPFS to listen on all interfaces
+    ipfs config Addresses.API /ip4/0.0.0.0/tcp/5001
+    ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
+    ipfs config Addresses.Swarm --json '["/ip4/0.0.0.0/tcp/4001", "/ip6/::/tcp/4001", "/ip4/0.0.0.0/udp/4001/quic", "/ip6/::/udp/4001/quic"]'
 else
     echo "IPFS already initialized"
+    # Ensure IPFS is configured to listen on all interfaces
+    ipfs config Addresses.API /ip4/0.0.0.0/tcp/5001
+    ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
 fi
 
 # Initialize IPFS Cluster if not already initialized
 if [ ! -f /root/.ipfs-cluster/service.json ]; then
     echo "Initializing IPFS Cluster..."
     ipfs-cluster-service init
+    # Configure cluster to listen on all interfaces
+    ipfs-cluster-service config api.restapi.http_listen_multiaddress /ip4/0.0.0.0/tcp/9094
 else
     echo "IPFS Cluster already initialized"
+    # Ensure cluster is configured to listen on all interfaces
+    ipfs-cluster-service config api.restapi.http_listen_multiaddress /ip4/0.0.0.0/tcp/9094
 fi
 
 # Start IPFS daemon in background with detailed logging
@@ -78,11 +89,35 @@ echo "IPFS Cluster started with PID: $CLUSTER_PID"
 
 # Wait for cluster to be ready
 echo "Waiting for IPFS Cluster to be ready..."
-sleep 5
+CLUSTER_READY=false
+for i in {1..30}; do
+    if curl -s http://localhost:9094/api/v0/status > /dev/null 2>&1; then
+        echo "✓ IPFS Cluster is ready!"
+        CLUSTER_READY=true
+        break
+    fi
+    echo "Waiting for IPFS Cluster... ($i/30)"
+    
+    # Check if cluster process is still running
+    if ! kill -0 $CLUSTER_PID 2>/dev/null; then
+        echo "ERROR: IPFS Cluster process died! Check /app/ipfs-cluster.log"
+        tail -50 /app/ipfs-cluster.log
+        exit 1
+    fi
+    
+    sleep 2
+done
+
+if [ "$CLUSTER_READY" = false ]; then
+    echo "ERROR: IPFS Cluster failed to start after 60 seconds"
+    echo "Last 50 lines of IPFS Cluster log:"
+    tail -50 /app/ipfs-cluster.log
+    exit 1
+fi
 
 # Check cluster status
 echo "Checking IPFS Cluster status..."
-tail -20 /app/ipfs-cluster.log
+curl -s http://localhost:9094/api/v0/status | head -20
 
 # Activate conda environment and start Flask application
 echo "=========================================="

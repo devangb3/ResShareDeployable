@@ -95,8 +95,8 @@ RUN mkdir -p /app/backend/vector_db \
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-# Expose Flask port (default 5000, but can be changed)
-EXPOSE 5000
+# Expose Flask port and IPFS ports
+EXPOSE 5000 8080 9094
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
