@@ -59,7 +59,16 @@ export const authAPI = {
       credentials: 'include',
       body: JSON.stringify({ password }),
     });
-    
+
+    return handleResponse(response);
+  },
+
+  checkAuthStatus: async () => {
+    const response = await fetch(`${API_BASE_URL}/auth-status`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+
     return handleResponse(response);
   },
 };

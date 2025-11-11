@@ -1,13 +1,14 @@
-import React, { useState, createContext, useContext } from 'react';
+import React, { useState, createContext, useContext, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { CssBaseline, Box } from '@mui/material';
+import { CssBaseline, Box, CircularProgress } from '@mui/material';
 import LoginPage from './components/LoginPage';
 import RegisterPage from './components/RegisterPage';
 import HomePage from './components/HomePage';
 import FileExplorer from './components/FileExplorer';
 import ChatInterface from './components/ChatInterface';
 import Navbar from './components/Navbar';
+import { authAPI } from './utils/api';
 
 // Auth Context
 const AuthContext = createContext();
@@ -35,6 +36,26 @@ function App() {
   const [user, setUser] = useState(null);
   const [rootData, setRootData] = useState(null);
   const [shareList, setShareList] = useState([]);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const data = await authAPI.checkAuthStatus();
+        if (data.authenticated && data.username) {
+          setUser(data.username);
+          setRootData(data.root);
+          setShareList(data.share_list || []);
+        }
+      } catch (error) {
+        console.error('Error checking auth status:', error);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkSession();
+  }, []);
 
   const theme = createTheme({
     palette: {
@@ -115,6 +136,25 @@ function App() {
     darkMode,
     toggleTheme,
   };
+
+  if (isCheckingAuth) {
+    return (
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            minHeight: '100vh',
+            backgroundColor: 'background.default'
+          }}
+        >
+          <CircularProgress />
+        </Box>
+      </ThemeProvider>
+    );
+  }
 
   return (
     <ThemeProvider theme={theme}>
