@@ -200,6 +200,32 @@ def logout_route():
     session.pop('username', None)
     return jsonify({'message': ErrorCode.SUCCESS.name}), 200
 
+@app.route('/auth-status', methods=['GET'])
+def auth_status():
+    """Check if user has a valid session and return user data if authenticated"""
+    if 'username' in session:
+        username = session['username']
+        try:
+            root_json = get_kv(username + " ROOT")
+            share_list = get_kv(username + " SHARE_MANAGER")
+
+            if root_json and share_list and root_json != "\n" and share_list != "\n":
+                return jsonify({
+                    'authenticated': True,
+                    'username': username,
+                    'root': json.loads(root_json),
+                    'share_list': json.loads(share_list)
+                }), 200
+            else:
+                session.pop('username', None)
+                return jsonify({'authenticated': False}), 401
+        except Exception as e:
+            logger.error(f"Error checking auth status: {e}")
+            session.pop('username', None)
+            return jsonify({'authenticated': False}), 401
+
+    return jsonify({'authenticated': False}), 401
+
 
 @app.route('/upload', methods=['POST'])
 @login_required
