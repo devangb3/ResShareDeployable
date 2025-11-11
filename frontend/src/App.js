@@ -8,6 +8,7 @@ import HomePage from './components/HomePage';
 import FileExplorer from './components/FileExplorer';
 import ChatInterface from './components/ChatInterface';
 import Navbar from './components/Navbar';
+import ErrorBoundary from './components/ErrorBoundary';
 import { authAPI } from './utils/api';
 
 // Auth Context
@@ -32,7 +33,10 @@ export const useThemeMode = () => {
 };
 
 function App() {
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved !== null ? JSON.parse(saved) : false;
+  });
   const [user, setUser] = useState(null);
   const [rootData, setRootData] = useState(null);
   const [shareList, setShareList] = useState([]);
@@ -107,7 +111,11 @@ function App() {
   });
 
   const toggleTheme = () => {
-    setDarkMode(!darkMode);
+    setDarkMode((prev) => {
+      const newValue = !prev;
+      localStorage.setItem('darkMode', JSON.stringify(newValue));
+      return newValue;
+    });
   };
 
   const login = (username, root, shares) => {
@@ -157,13 +165,14 @@ function App() {
   }
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AuthContext.Provider value={authValue}>
-        <ThemeContext.Provider value={themeValue}>
-          <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default' }}>
-            {user && <Navbar />}
-            <Routes>
+    <ErrorBoundary>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <AuthContext.Provider value={authValue}>
+          <ThemeContext.Provider value={themeValue}>
+            <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default' }}>
+              {user && <Navbar />}
+              <Routes>
               <Route 
                 path="/login" 
                 element={!user ? <LoginPage /> : <Navigate to="/home" />} 
@@ -193,6 +202,7 @@ function App() {
         </ThemeContext.Provider>
       </AuthContext.Provider>
     </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 
