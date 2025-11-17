@@ -768,7 +768,7 @@ const FileExplorer = () => {
           <Button
             onClick={handleUploadConfirm}
             variant="contained"
-            disabled={!selectedFile}
+            disabled={selectedFiles.length === 0}
           >
             Upload
           </Button>
