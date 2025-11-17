@@ -314,7 +314,8 @@ After Vercel deployment, you'll get a URL like `https://res-share-deployable-eta
 
 2. **Restart backend:**
    ```bash
-   docker compose restart
+   docker compose down
+   docker compose up -d
    ```
 
 ### Step 4: Verify Frontend Deployment

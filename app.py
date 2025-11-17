@@ -35,20 +35,32 @@ if additional_origins:
 
 CORS(app, origins=allowed_origins, supports_credentials=True)
 
+flask_env = os.environ.get('FLASK_ENV', 'development')
+is_development = flask_env == 'development'
+
 secret_key = os.environ.get('FLASK_SECRET_KEY')
 if not secret_key:
-    raise RuntimeError("FLASK_SECRET_KEY is required in production for session management")
+    if is_development:
+        secret_key = 'dev-secret-key-change-in-production'
+        logger.warning("Using default secret key for development. DO NOT use in production!")
+    else:
+        raise RuntimeError("FLASK_SECRET_KEY is required in production for session management")
 app.secret_key = secret_key
 
-is_development = os.environ.get('FLASK_ENV', 'development') == 'development'
+# Session cookie configuration based on environment
 if is_development:
+    # Development: Local HTTP environment
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
     app.config['SESSION_COOKIE_SECURE'] = False
+    logger.info("Running in DEVELOPMENT mode - cookies configured for HTTP")
 else:
+    # Production: HTTPS with cross-origin support
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'None'  # Required for cross-origin cookies
     app.config['SESSION_COOKIE_SECURE'] = True  # Required when SameSite=None
+    logger.info("Running in PRODUCTION mode - cookies configured for HTTPS")
+
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
 app.config['SESSION_COOKIE_NAME'] = 'session'
 app.config['SESSION_COOKIE_DOMAIN'] = None
