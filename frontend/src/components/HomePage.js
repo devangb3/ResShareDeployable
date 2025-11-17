@@ -18,6 +18,7 @@ import {
   MenuItem,
   FormControlLabel,
   Switch,
+  ClickAwayListener,
 } from '@mui/material';
 import {
   CreateNewFolder,
@@ -826,30 +827,32 @@ const HomePage = () => {
 
       {/* Context Menu */}
       {isMenuOpen && (
-        <Paper
-          sx={{
-            position: 'fixed',
-            top: menuAnchorEl?.getBoundingClientRect().top,
-            left: menuAnchorEl?.getBoundingClientRect().left,
-            zIndex: 1300,
-            minWidth: 200,
-          }}
-        >
-          {selectedItem && (
-            <MenuItem onClick={handleDownload}>
-              <Download sx={{ mr: 2 }} />
-              {selectedItem.is_folder || selectedItem.node?.is_folder ? 'Download as ZIP' : 'Download'}
+        <ClickAwayListener onClickAway={handleMenuClose}>
+          <Paper
+            sx={{
+              position: 'fixed',
+              top: menuAnchorEl?.getBoundingClientRect().top,
+              left: menuAnchorEl?.getBoundingClientRect().left,
+              zIndex: 1300,
+              minWidth: 200,
+            }}
+          >
+            {selectedItem && (
+              <MenuItem onClick={handleDownload}>
+                <Download sx={{ mr: 2 }} />
+                {selectedItem.is_folder || selectedItem.node?.is_folder ? 'Download as ZIP' : 'Download'}
+              </MenuItem>
+            )}
+            <MenuItem onClick={() => setShareDialogOpen(true)}>
+              <Share sx={{ mr: 2 }} />
+              Share
             </MenuItem>
-          )}
-          <MenuItem onClick={() => setShareDialogOpen(true)}>
-            <Share sx={{ mr: 2 }} />
-            Share
-          </MenuItem>
-          <MenuItem onClick={() => handleDeleteClick(selectedItem)} sx={{ color: 'error.main' }}>
-            <Delete sx={{ mr: 2 }} />
-            Delete
-          </MenuItem>
-        </Paper>
+            <MenuItem onClick={() => handleDeleteClick(selectedItem)} sx={{ color: 'error.main' }}>
+              <Delete sx={{ mr: 2 }} />
+              Delete
+            </MenuItem>
+          </Paper>
+        </ClickAwayListener>
       )}
 
       {/* Share Dialog */}
