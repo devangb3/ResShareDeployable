@@ -18,7 +18,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
   LinearProgress,
   Tooltip,
   FormControlLabel,
