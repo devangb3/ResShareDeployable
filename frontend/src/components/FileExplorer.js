@@ -23,6 +23,7 @@ import {
   FormControlLabel,
   Switch,
   Divider,
+  ClickAwayListener,
 } from '@mui/material';
 import {
   Folder,
@@ -73,7 +74,7 @@ const FileExplorer = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [shareUsername, setShareUsername] = useState('');
-  const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
   const [aiModeEnabled, setAiModeEnabled] = useState(() =>
     safeParseBooleanFromStorage('aiModeEnabled', true)
   );
@@ -180,9 +181,9 @@ const FileExplorer = () => {
   };
 
   const handleFileSelect = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      setSelectedFile(file);
+    const files = Array.from(event.target.files);
+    if (files.length > 0) {
+      setSelectedFiles(files);
     }
   };
 
@@ -199,12 +200,15 @@ const FileExplorer = () => {
   };
 
   const handleUploadConfirm = async () => {
-    if (!selectedFile) return;
+    if (!selectedFiles || selectedFiles.length === 0) return;
 
-    const sizeValidation = utils.validateFileSize(selectedFile, 1);
-    if (!sizeValidation.isValid) {
-      showError(sizeValidation.error);
-      return;
+    // Validate all files first
+    for (const file of selectedFiles) {
+      const sizeValidation = utils.validateFileSize(file, 1);
+      if (!sizeValidation.isValid) {
+        showError(`${file.name}: ${sizeValidation.error}`);
+        return;
+      }
     }
 
     logger.debug('[FileExplorer] Starting upload. aiModeEnabled=', aiModeEnabled, 'skip will be', !aiModeEnabled);
@@ -212,65 +216,72 @@ const FileExplorer = () => {
     setUploadProgress(0);
     setUploadDialogOpen(false);
 
+    const totalFiles = selectedFiles.length;
+    let uploadedFiles = 0;
+    let failedFiles = [];
+
     try {
-      // Simulate upload progress for better UX
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return prev;
+      for (const file of selectedFiles) {
+        try {
+          logger.debug('[FileExplorer] Calling API with', {
+            path: currentPath || '',
+            skip_ai_processing: !aiModeEnabled,
+            filename: file?.name,
+            size: file?.size,
+          });
+
+          const response = await fileAPI.uploadFile(file, currentPath || '', !aiModeEnabled);
+
+          logger.debug('Upload response flags:', {
+            rag_processed: response?.rag_processed,
+            rag_skipped: response?.rag_skipped,
+            skip_ai_processing_sent: !aiModeEnabled,
+            skip_ai_processing_backend: response?.skip_ai_processing,
+          });
+
+          if (response.message === 'SUCCESS') {
+            // Update the root data with the new file
+            setRootData(JSON.parse(response.root));
+            uploadedFiles++;
+          } else {
+            failedFiles.push(file.name);
+            logger.warn('[FileExplorer] Non-success response:', response);
           }
-          return prev + 10;
-        });
-      }, 200);
-
-      logger.debug('[FileExplorer] Calling API with', {
-        path: currentPath || '',
-        skip_ai_processing: !aiModeEnabled,
-        filename: selectedFile?.name,
-        size: selectedFile?.size,
-      });
-      const response = await fileAPI.uploadFile(selectedFile, currentPath || '', !aiModeEnabled);
-      logger.debug('Upload response flags:', {
-        rag_processed: response?.rag_processed,
-        rag_skipped: response?.rag_skipped,
-        skip_ai_processing_sent: !aiModeEnabled,
-        skip_ai_processing_backend: response?.skip_ai_processing,
-      });
-
-      clearInterval(progressInterval);
-      setUploadProgress(100);
-
-      if (response.message === 'SUCCESS') {
-        // Update the root data with the new file
-        setRootData(JSON.parse(response.root));
-
-        let message = 'File uploaded successfully!';
-        if (response.rag_skipped) {
-          message += ' AI processing was skipped.';
-        } else if (response.rag_processed) {
-          message += ' Ready for AI chat.';
+        } catch (error) {
+          logger.error('[FileExplorer] Error uploading file:', file.name, error);
+          failedFiles.push(file.name);
         }
 
+        // Update progress
+        setUploadProgress(Math.round((uploadedFiles + failedFiles.length) / totalFiles * 100));
+      }
+
+      // Show results
+      if (failedFiles.length === 0) {
+        let message = `${uploadedFiles} file${uploadedFiles > 1 ? 's' : ''} uploaded successfully!`;
+        if (aiModeEnabled) {
+          message += ' Ready for AI chat.';
+        }
         showSuccess(message);
+      } else if (uploadedFiles > 0) {
+        showError(`Uploaded ${uploadedFiles} file(s), but ${failedFiles.length} failed: ${failedFiles.join(', ')}`);
       } else {
-        showError(response.message || 'Failed to upload file');
-        logger.warn('[FileExplorer] Non-success response:', response);
+        showError(`Failed to upload all files: ${failedFiles.join(', ')}`);
       }
     } catch (error) {
       logger.error('[FileExplorer] Error thrown:', error);
-      showError(getErrorMessage(error, 'Failed to upload file'));
+      showError(getErrorMessage(error, 'Failed to upload files'));
     } finally {
       logger.debug('[FileExplorer] Finalizing upload UI state reset');
       setUploading(false);
       setTimeout(() => setUploadProgress(0), 1000);
-      setSelectedFile(null);
+      setSelectedFiles([]);
     }
   };
 
   const handleUploadCancel = () => {
     setUploadDialogOpen(false);
-    setSelectedFile(null);
+    setSelectedFiles([]);
   };
 
   const handleDownloadFile = async (fileName, item) => {
@@ -295,16 +306,34 @@ const FileExplorer = () => {
     if (!selectedItem) return;
 
     try {
-      const filePath = currentPath ? `${currentPath}/${selectedItem.name}` : selectedItem.name;
+      const itemPath = currentPath ? `${currentPath}/${selectedItem.name}` : selectedItem.name;
 
       // Check if we're in a shared folder by looking at the path
       const pathParts = currentPath.split('/');
       const isShared = pathParts.length > 0 && shareList && shareList[pathParts[0]];
 
-      // Call downloadFile with (path, filename, isShared)
-      const result = await downloadFile(filePath, selectedItem.name, isShared);
-      if (result.success && !result.cancelled) {
-        showSuccess(`Downloaded "${selectedItem.name}" successfully`);
+      if (selectedItem.is_folder) {
+        // Download folder as ZIP
+        const response = await fileAPI.downloadFolderAsZip(itemPath, isShared);
+        const blob = await response.blob();
+
+        // Trigger download
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${selectedItem.name}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        showSuccess(`Downloaded "${selectedItem.name}" as ZIP successfully`);
+      } else {
+        // Download single file
+        const result = await downloadFile(itemPath, selectedItem.name, isShared);
+        if (result.success && !result.cancelled) {
+          showSuccess(`Downloaded "${selectedItem.name}" successfully`);
+        }
       }
     } catch (error) {
       showError(getErrorMessage(error, `Failed to download "${selectedItem.name}"`));
@@ -652,7 +681,7 @@ const FileExplorer = () => {
         <DialogContent>
           <Box sx={{ py: 2 }}>
             <Typography variant="body1" sx={{ mb: 2 }}>
-              Select a file to upload to your drive.
+              Select one or more files to upload to your drive.
             </Typography>
 
             <input
@@ -660,6 +689,7 @@ const FileExplorer = () => {
               style={{ display: 'none' }}
               id="upload-file-input"
               type="file"
+              multiple
               onChange={handleFileSelect}
             />
             <label htmlFor="upload-file-input">
@@ -670,18 +700,25 @@ const FileExplorer = () => {
                 fullWidth
                 sx={{ mb: 3 }}
               >
-                {selectedFile ? selectedFile.name : 'Choose File'}
+                {selectedFiles.length > 0 ? `${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''} selected` : 'Choose Files'}
               </Button>
             </label>
 
-            {selectedFile && (
-              <Box sx={{ mb: 3 }}>
+            {selectedFiles.length > 0 && (
+              <Box sx={{ mb: 3, maxHeight: '200px', overflowY: 'auto' }}>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  Selected: {selectedFile.name}
+                  Selected files:
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Size: {utils.formatFileSize(selectedFile.size)}
-                </Typography>
+                {selectedFiles.map((file, index) => (
+                  <Box key={index} sx={{ mb: 1, pl: 1 }}>
+                    <Typography variant="body2">
+                      • {file.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {utils.formatFileSize(file.size)}
+                    </Typography>
+                  </Box>
+                ))}
               </Box>
             )}
 
@@ -731,7 +768,7 @@ const FileExplorer = () => {
           <Button
             onClick={handleUploadConfirm}
             variant="contained"
-            disabled={!selectedFile}
+            disabled={selectedFiles.length === 0}
           >
             Upload
           </Button>
@@ -785,30 +822,32 @@ const FileExplorer = () => {
 
       {/* Context Menu */}
       {isMenuOpen && (
-        <Paper
-          sx={{
-            position: 'fixed',
-            top: menuAnchorEl?.getBoundingClientRect().top,
-            left: menuAnchorEl?.getBoundingClientRect().left,
-            zIndex: 1300,
-            minWidth: 200,
-          }}
-        >
-          {selectedItem && !selectedItem.is_folder && (
-            <MenuItem onClick={handleDownloadFromMenu}>
-              <Download sx={{ mr: 2 }} />
-              Download
+        <ClickAwayListener onClickAway={handleMenuClose}>
+          <Paper
+            sx={{
+              position: 'fixed',
+              top: menuAnchorEl?.getBoundingClientRect().top,
+              left: menuAnchorEl?.getBoundingClientRect().left,
+              zIndex: 1300,
+              minWidth: 200,
+            }}
+          >
+            {selectedItem && (
+              <MenuItem onClick={handleDownloadFromMenu}>
+                <Download sx={{ mr: 2 }} />
+                {selectedItem.is_folder ? 'Download as ZIP' : 'Download'}
+              </MenuItem>
+            )}
+            <MenuItem onClick={() => setShareDialogOpen(true)}>
+              <Share sx={{ mr: 2 }} />
+              Share
             </MenuItem>
-          )}
-          <MenuItem onClick={() => setShareDialogOpen(true)}>
-            <Share sx={{ mr: 2 }} />
-            Share
-          </MenuItem>
-          <MenuItem onClick={handleDeleteClick} sx={{ color: 'error.main' }}>
-            <Delete sx={{ mr: 2 }} />
-            Delete
-          </MenuItem>
-        </Paper>
+            <MenuItem onClick={handleDeleteClick} sx={{ color: 'error.main' }}>
+              <Delete sx={{ mr: 2 }} />
+              Delete
+            </MenuItem>
+          </Paper>
+        </ClickAwayListener>
       )}
     </Container>
   );

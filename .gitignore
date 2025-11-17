@@ -56,3 +56,5 @@ MODULE.bazel.lock
 *.pem
 .env.production
 *.log
+.cursor/
+.claude/

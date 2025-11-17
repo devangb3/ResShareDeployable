@@ -1,6 +1,7 @@
 import hashlib
 import json
 from io import BytesIO
+import zipfile
 
 from flask import Flask, request, jsonify, session, send_file
 from functools import wraps
@@ -437,6 +438,90 @@ def download_route():
         as_attachment=True,
         download_name=file_obj.filename
     )
+
+def collect_files_recursively(node, current_path=''):
+    """
+    Recursively collect all files from a folder node.
+    Returns a list of tuples: (relative_path, file_obj)
+    """
+    files = []
+
+    if node.is_folder:
+        for child_name, child_node in node.children.items():
+            child_path = f"{current_path}/{child_name}" if current_path else child_name
+            if child_node.is_folder:
+                # Recursively collect from subfolders
+                files.extend(collect_files_recursively(child_node, child_path))
+            else:
+                # Add file to the list
+                if child_node.file_obj:
+                    files.append((child_path, child_node.file_obj))
+
+    return files
+
+@app.route('/download-zip', methods=['POST'])
+@login_required
+def download_zip_route():
+    """Download a folder as a ZIP file."""
+    data = request.get_json()
+    if not data or 'path' not in data:
+        return jsonify({'message': ErrorCode.INVALID_PATH.name}), 400
+
+    path = data['path']
+    username = session['username']
+    is_shared = data.get('is_shared', False)
+
+    # Find the target folder
+    if is_shared:
+        share_manager = ShareManager.from_json(get_kv(username + " SHARE_MANAGER"))
+        target_node = share_manager.find_node_by_path(path)
+    else:
+        root = Node.from_json(get_kv(username + " ROOT"))
+        target_node = root.find_node_by_path(path)
+
+    if target_node is None:
+        return jsonify({'message': ErrorCode.NODE_NOT_FOUND.name}), 404
+
+    if not target_node.is_folder:
+        return jsonify({'message': 'Path is not a folder'}), 400
+
+    # Collect all files recursively
+    files_to_zip = collect_files_recursively(target_node)
+
+    if not files_to_zip:
+        return jsonify({'message': 'Folder is empty'}), 400
+
+    # Create ZIP file in memory
+    zip_buffer = BytesIO()
+
+    try:
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            for relative_path, file_obj in files_to_zip:
+                # Download file from IPFS
+                file_content = download_file_from_ipfs(file_obj.cid)
+
+                if file_content and file_content.get("success"):
+                    # Add file to ZIP
+                    zip_file.writestr(relative_path, file_content["file"].getvalue())
+                else:
+                    logger.warning(f"Failed to download file: {relative_path}")
+
+        zip_buffer.seek(0)
+
+        # Get folder name for the zip file
+        folder_name = path.split('/')[-1] if path else 'files'
+
+        return send_file(
+            zip_buffer,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=f"{folder_name}.zip"
+        )
+
+    except Exception as e:
+        logger.error(f"Error creating ZIP file: {str(e)}")
+        return jsonify({'message': 'Failed to create ZIP file'}), 500
+
 @app.route('/', methods=['GET'])
 def health_route():
     return jsonify({'message': 'OK'}), 200

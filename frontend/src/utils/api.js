@@ -142,12 +142,30 @@ export const fileAPI = {
       credentials: 'include',
       body: JSON.stringify({ path, is_shared: isShared }),
     });
-    
+
     if (!response.ok) {
       const data = await response.json();
       throw new Error(data.message || 'Download failed');
     }
-    
+
+    return response;
+  },
+
+  downloadFolderAsZip: async (path, isShared = false) => {
+    const response = await fetch(`${API_BASE_URL}/download-zip`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({ path, is_shared: isShared }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.message || 'Download failed');
+    }
+
     return response;
   },
 
