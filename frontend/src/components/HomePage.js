@@ -279,15 +279,33 @@ const HomePage = () => {
       logger.debug("item", item);
       // Check if the item is from shared items section
       const isShared = item.sharedBy !== undefined;
-      const filePath = isShared
+      const itemPath = isShared
         ? `${item.sharedBy}/${item.name}`
         : item.name;
-      logger.debug("filePath", filePath, "isShared", isShared);
+      logger.debug("itemPath", itemPath, "isShared", isShared);
 
-      // Call downloadFile with (path, filename, isShared)
-      const result = await downloadFile(filePath, item.name, isShared);
-      if (result.success && !result.cancelled) {
-        showSuccess(`Downloaded "${item.name}" successfully`);
+      if (item.is_folder || item.node?.is_folder) {
+        // Download folder as ZIP
+        const response = await fileAPI.downloadFolderAsZip(itemPath, isShared);
+        const blob = await response.blob();
+
+        // Trigger download
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${item.name}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        showSuccess(`Downloaded "${item.name}" as ZIP successfully`);
+      } else {
+        // Download single file
+        const result = await downloadFile(itemPath, item.name, isShared);
+        if (result.success && !result.cancelled) {
+          showSuccess(`Downloaded "${item.name}" successfully`);
+        }
       }
     } catch (error) {
       showError(getErrorMessage(error, `Failed to download "${item.name}"`));
@@ -817,10 +835,10 @@ const HomePage = () => {
             minWidth: 200,
           }}
         >
-          {selectedItem && !selectedItem.is_folder && (
+          {selectedItem && (
             <MenuItem onClick={handleDownload}>
               <Download sx={{ mr: 2 }} />
-              Download
+              {selectedItem.is_folder || selectedItem.node?.is_folder ? 'Download as ZIP' : 'Download'}
             </MenuItem>
           )}
           <MenuItem onClick={() => setShareDialogOpen(true)}>
