@@ -1,6 +1,11 @@
 import { logger } from './logger';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
+const getApiBaseUrl = () => {
+  const url = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
+  return url.replace(/\/+$/, ''); // Remove trailing slashes
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 if (!process.env.REACT_APP_API_BASE_URL && process.env.NODE_ENV === 'production') {
   logger.warn('API Configuration', 'REACT_APP_API_BASE_URL not configured in production');
