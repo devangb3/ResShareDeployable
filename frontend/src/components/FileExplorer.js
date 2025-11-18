@@ -53,7 +53,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../App';
 import { fileAPI, utils } from '../utils/api';
 import { logger } from '../utils/logger';
-import { getErrorMessage } from '../utils/errorHandler';
+import { getErrorMessage, getBackendErrorMessage } from '../utils/errorHandler';
 import { sanitizeFileName, sanitizeUsername, safeParseBooleanFromStorage } from '../utils/sanitization';
 import useSnackbar from '../hooks/useSnackbar';
 import useFileDownload from '../hooks/useFileDownload';
@@ -64,7 +64,7 @@ import FormDialog from './FormDialog';
 const FileExplorer = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { rootData, setRootData, shareList } = useAuth();
+  const { user, rootData, setRootData, shareList } = useAuth();
 
   const [currentPath, setCurrentPath] = useState('');
   const [currentNode, setCurrentNode] = useState(null);
@@ -168,7 +168,7 @@ const FileExplorer = () => {
         showSuccess('Folder created successfully!');
         setCreateFolderOpen(false);
       } else {
-        showError(data.result || 'Failed to create folder');
+        showError(getBackendErrorMessage(data.result) || 'Failed to create folder');
       }
     } catch (error) {
       showError(getErrorMessage(error, 'Failed to create folder'));
@@ -349,6 +349,12 @@ const FileExplorer = () => {
       return;
     }
 
+    // Prevent self-sharing
+    if (sanitized === user) {
+      showError('You cannot share with yourself');
+      return;
+    }
+
     if (!selectedItem) return;
 
     try {
@@ -359,7 +365,7 @@ const FileExplorer = () => {
         setShareDialogOpen(false);
         setShareUsername('');
       } else {
-        showError(data.message || 'Failed to share item');
+        showError(getBackendErrorMessage(data.message) || 'Failed to share item');
       }
     } catch (error) {
       showError(getErrorMessage(error, 'Failed to share item'));
@@ -385,7 +391,7 @@ const FileExplorer = () => {
         setRootData(JSON.parse(response.root));
         showSuccess(`Deleted "${itemToDelete.name}" successfully`);
       } else {
-        showError(response.message || `Failed to delete "${itemToDelete.name}"`);
+        showError(getBackendErrorMessage(response.message) || `Failed to delete "${itemToDelete.name}"`);
       }
     } catch (error) {
       showError(getErrorMessage(error, `Failed to delete "${itemToDelete.name}"`));

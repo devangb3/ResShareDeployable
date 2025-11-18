@@ -135,7 +135,7 @@ FLASK_ENV=production
 
 # CORS Origins (comma-separated, for production frontends)
 # Add your Vercel domain here
-CORS_ORIGINS=https://res-share-deployable-eta.vercel.app/
+CORS_ORIGINS=https://res-share-deployable.vercel.app/
 
 # Flask Secret Key (generate a secure random string)
 FLASK_SECRET_KEY=your-secure-random-secret-key-here
@@ -231,7 +231,7 @@ nano .env
 
 Add ngrok URL to CORS_ORIGINS:
 ```bash
-CORS_ORIGINS=https://res-share-deployable-eta.vercel.app/,https://abc123.ngrok-free.app
+CORS_ORIGINS=https://res-share-deployable.vercel.app/,https://abc123.ngrok-free.app
 ```
 
 **Restart backend:**
@@ -298,7 +298,7 @@ docker compose restart
 
 ### Step 3: Update Backend CORS
 
-After Vercel deployment, you'll get a URL like `https://res-share-deployable-eta.vercel.app/`.
+After Vercel deployment, you'll get a URL like `https://res-share-deployable.vercel.app/`.
 
 1. **Update EC2 backend `.env`:**
    ```bash
@@ -309,7 +309,7 @@ After Vercel deployment, you'll get a URL like `https://res-share-deployable-eta
 
    Update:
    ```bash
-   CORS_ORIGINS=https://res-share-deployable-eta.vercel.app/
+   CORS_ORIGINS=https://res-share-deployable.vercel.app/
    ```
 
 2. **Restart backend:**
@@ -320,7 +320,7 @@ After Vercel deployment, you'll get a URL like `https://res-share-deployable-eta
 
 ### Step 4: Verify Frontend Deployment
 
-1. **Visit your Vercel URL**: `https://res-share-deployable-eta.vercel.app/`
+1. **Visit your Vercel URL**: `https://res-share-deployable.vercel.app/`
 2. **Test login/signup functionality**
 3. **Check browser console for any CORS errors**
 

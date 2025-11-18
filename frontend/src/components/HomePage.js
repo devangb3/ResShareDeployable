@@ -38,7 +38,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
 import { fileAPI, utils } from '../utils/api';
 import { logger } from '../utils/logger';
-import { getErrorMessage } from '../utils/errorHandler';
+import { getErrorMessage, getBackendErrorMessage } from '../utils/errorHandler';
 import { sanitizeFileName, sanitizeUsername, safeParseBooleanFromStorage } from '../utils/sanitization';
 import useSnackbar from '../hooks/useSnackbar';
 import useFileDownload from '../hooks/useFileDownload';
@@ -140,7 +140,7 @@ const HomePage = () => {
         showSuccess('Folder created successfully!');
         setCreateFolderOpen(false);
       } else {
-        showError(response.result || 'Failed to create folder');
+        showError(getBackendErrorMessage(response.result) || 'Failed to create folder');
       }
     } catch (error) {
       showError(getErrorMessage(error, 'Failed to create folder'));
@@ -156,55 +156,66 @@ const HomePage = () => {
   };
 
   const handleFileSelected = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
+    const files = Array.from(event.target.files);
+    if (!files || files.length === 0) return;
 
-    const sizeValidation = utils.validateFileSize(file, 1);
-    if (!sizeValidation.isValid) {
-      showError(sizeValidation.error);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+    // Validate all files first
+    for (const file of files) {
+      const sizeValidation = utils.validateFileSize(file, 1);
+      if (!sizeValidation.isValid) {
+        showError(`${file.name}: ${sizeValidation.error}`);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        return;
       }
-      return;
     }
 
     setUploading(true);
     setUploadProgress(0);
 
+    const totalFiles = files.length;
+    let uploadedFiles = 0;
+    let failedFiles = [];
+
     try {
-      // Simulate upload progress for better UX
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return prev;
+      for (const file of files) {
+        try {
+          logger.debug('[HomePage] Uploading with aiModeEnabled=', aiModeEnabled, 'skip=', !aiModeEnabled);
+          const response = await fileAPI.uploadFile(file, '', !aiModeEnabled);
+
+          if (response.message === 'SUCCESS') {
+            setRootData(JSON.parse(response.root));
+            uploadedFiles++;
+          } else {
+            failedFiles.push(file.name);
+            logger.warn('[HomePage] Non-success response:', response);
           }
-          return prev + 10;
-        });
-      }, 200);
-
-      logger.debug('[HomePage] Uploading with aiModeEnabled=', aiModeEnabled, 'skip=', !aiModeEnabled);
-      const response = await fileAPI.uploadFile(file, '', !aiModeEnabled);
-
-      clearInterval(progressInterval);
-      setUploadProgress(100);
-
-      if (response.message === 'SUCCESS') {
-        setRootData(JSON.parse(response.root));
-
-        let message = 'File uploaded successfully!';
-        if (response.rag_skipped) {
-          message += ' AI processing was skipped.';
-        } else if (response.rag_processed) {
-          message += ' Ready for AI chat.';
+        } catch (error) {
+          logger.error('[HomePage] Error uploading file:', file.name, error);
+          failedFiles.push(file.name);
         }
 
+        // Update progress
+        setUploadProgress(Math.round((uploadedFiles + failedFiles.length) / totalFiles * 100));
+      }
+
+      // Show results
+      if (failedFiles.length === 0) {
+        let message = `${uploadedFiles} file${uploadedFiles > 1 ? 's' : ''} uploaded successfully!`;
+        if (aiModeEnabled) {
+          message += ' Ready for AI chat.';
+        } else {
+          message += ' AI processing was skipped.';
+        }
         showSuccess(message);
+      } else if (uploadedFiles > 0) {
+        showError(`Uploaded ${uploadedFiles} file(s), but ${failedFiles.length} failed: ${failedFiles.join(', ')}`);
       } else {
-        showError(response.message || 'Failed to upload file');
+        showError(`Failed to upload all files: ${failedFiles.join(', ')}`);
       }
     } catch (error) {
-      showError(getErrorMessage(error, 'Failed to upload file'));
+      showError(getErrorMessage(error, 'Failed to upload files'));
     } finally {
       setUploading(false);
       setTimeout(() => setUploadProgress(0), 1000);
@@ -262,7 +273,7 @@ const HomePage = () => {
 
         showSuccess(`Deleted "${itemToDelete.name}" successfully`);
       } else {
-        showError(response.message || `Failed to delete "${itemToDelete.name}"`);
+        showError(getBackendErrorMessage(response.message) || `Failed to delete "${itemToDelete.name}"`);
       }
     } catch (error) {
       showError(getErrorMessage(error, `Failed to delete "${itemToDelete.name}"`));
@@ -322,6 +333,12 @@ const HomePage = () => {
       return;
     }
 
+    // Prevent self-sharing
+    if (sanitized === user) {
+      showError('You cannot share with yourself');
+      return;
+    }
+
     if (!selectedItem) return;
     const itemToShare = selectedItem.isShared ? selectedItem.node : selectedItem;
     logger.debug("itemToShare:", itemToShare);
@@ -334,7 +351,7 @@ const HomePage = () => {
         setShareDialogOpen(false);
         setShareUsername('');
       } else {
-        showError(data.message || 'Failed to share item');
+        showError(getBackendErrorMessage(data.message) || 'Failed to share item');
       }
     } catch (error) {
       showError(getErrorMessage(error, 'Network error. Please try again.'));
@@ -560,6 +577,7 @@ const HomePage = () => {
         style={{ display: 'none' }}
         onChange={handleFileSelected}
         title="Maximum file size: 1 MB"
+        multiple
       />
 
       {/* Welcome Section */}
