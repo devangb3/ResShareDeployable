@@ -93,7 +93,8 @@ def login_route():
         share_list = json.loads(share_list)
         
         response = jsonify({
-            'result': result.name,
+            'message': result.name,
+            'result': result.name,  # Keep for backward compatibility
             'root': root_json,
             'share_list': share_list
         })
@@ -101,7 +102,7 @@ def login_route():
         logger.info(f"Response headers: {dict(response.headers)}")
         return response, 200
 
-    return jsonify({'result': result.name}), 401
+    return jsonify({'message': result.name, 'result': result.name}), 401
 
 @app.route('/signup', methods=['POST'])
 def signup_route():
@@ -112,10 +113,11 @@ def signup_route():
     if result == ErrorCode.SUCCESS:
         return jsonify({
             'ok': "true",
-            'result': result.name
+            'message': result.name,
+            'result': result.name  # Keep for backward compatibility
         }), 200
 
-    return jsonify({'result': result.name}), 401
+    return jsonify({'message': result.name, 'result': result.name}), 401
 
 @app.route('/create-folder', methods=['POST'])
 @login_required

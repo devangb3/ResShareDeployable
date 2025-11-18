@@ -11,7 +11,7 @@ if (!process.env.REACT_APP_API_BASE_URL && process.env.NODE_ENV === 'production'
   logger.warn('API Configuration', 'REACT_APP_API_BASE_URL not configured in production');
 }
 
-const handleResponse = async (response) => {
+const handleResponse = async (response, skipAutoRedirect = false) => {
   let data;
   try {
     data = await response.json();
@@ -25,8 +25,9 @@ const handleResponse = async (response) => {
     const error = new Error(data.message || data.result || 'API request failed');
     error.response = { status: response.status, data };
 
-    if (response.status === 401) {
-      if (window.location.pathname !== '/login') {
+    // Auto-redirect on 401 (session expired), but skip for signup/login endpoints
+    if (response.status === 401 && !skipAutoRedirect) {
+      if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
         logger.info('Session Expired', 'Redirecting to login');
         window.location.href = '/login';
       }
@@ -50,7 +51,7 @@ export const authAPI = {
       body: JSON.stringify({ username, password }),
     });
 
-    return handleResponse(response);
+    return handleResponse(response, true); // Skip auto-redirect for login errors
   },
 
   signup: async (username, password) => {
@@ -62,7 +63,7 @@ export const authAPI = {
       },
       body: JSON.stringify({ username, password }),
     });
-    return handleResponse(response);
+    return handleResponse(response, true); // Skip auto-redirect for signup errors
   },
 
   logout: async () => {
