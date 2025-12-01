@@ -64,7 +64,7 @@ import FormDialog from './FormDialog';
 const FileExplorer = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, rootData, setRootData, shareList } = useAuth();
+  const { user, rootData, setRootData, shareList, refreshShareList } = useAuth();
 
   const [currentPath, setCurrentPath] = useState('');
   const [currentNode, setCurrentNode] = useState(null);
@@ -107,6 +107,19 @@ const FileExplorer = () => {
       setCurrentNode(node);
     }
   }, [location.pathname, rootData, shareList]);
+
+  useEffect(() => {
+    const refreshSharedItems = async () => {
+      if (!refreshShareList) return;
+      try {
+        await refreshShareList();
+      } catch (error) {
+        logger.error('Failed to refresh shared items', error);
+      }
+    };
+
+    refreshSharedItems();
+  }, [refreshShareList, location.pathname]);
 
   const findNodeByPath = useCallback((root, path) => {
     if (!path || path === '') return root;
@@ -358,7 +371,8 @@ const FileExplorer = () => {
     if (!selectedItem) return;
 
     try {
-      const data = await fileAPI.shareItem(sanitized, selectedItem);
+      const path = currentPath ? `${currentPath}/${selectedItem.name}` : selectedItem.name;
+      const data = await fileAPI.shareItem(sanitized, selectedItem, path);
 
       if (data.message === 'SUCCESS') {
         showSuccess('Item shared successfully!');

@@ -48,7 +48,7 @@ import FormDialog from './FormDialog';
 
 const HomePage = () => {
   const navigate = useNavigate();
-  const { user, rootData, shareList, setRootData, setShareList } = useAuth();
+  const { user, rootData, shareList, setRootData, setShareList, refreshShareList } = useAuth();
   const [speedDialOpen, setSpeedDialOpen] = useState(false);
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -71,6 +71,19 @@ const HomePage = () => {
   const { snackbar, showSuccess, showError, closeSnackbar } = useSnackbar();
   const { downloadFile, isDownloading } = useFileDownload(showError);
   const { menuAnchorEl, selectedItem, isMenuOpen, handleMenuOpen, handleMenuClose, clearSelection } = useItemContextMenu();
+
+  useEffect(() => {
+    const fetchSharedItems = async () => {
+      if (!refreshShareList) return;
+      try {
+        await refreshShareList();
+      } catch (error) {
+        logger.error('Failed to refresh shared items on home', error);
+      }
+    };
+
+    fetchSharedItems();
+  }, [refreshShareList]);
 
   const calculateStats = useCallback((node) => {
     let files = 0;
@@ -344,7 +357,11 @@ const HomePage = () => {
     logger.debug("itemToShare:", itemToShare);
 
     try {
-      const data = await fileAPI.shareItem(sanitized, itemToShare);
+      const pathToShare = selectedItem?.isShared
+        ? `${selectedItem.sharedBy}/${selectedItem.name}`
+        : selectedItem?.name;
+
+      const data = await fileAPI.shareItem(sanitized, itemToShare, pathToShare);
 
       if (data.message === 'SUCCESS') {
         showSuccess('Item shared successfully!');

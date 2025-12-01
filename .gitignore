@@ -58,3 +58,4 @@ MODULE.bazel.lock
 *.log
 .cursor/
 .claude/
+AGENTS.md

@@ -96,6 +96,15 @@ export const authAPI = {
 
     return handleResponse(response);
   },
+
+  fetchSharedItems: async () => {
+    const response = await fetch(`${API_BASE_URL}/shared`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+
+    return handleResponse(response);
+  },
 };
 
 export const fileAPI = {
@@ -183,17 +192,26 @@ export const fileAPI = {
     return handleResponse(response);
   },
 
-  shareItem: async (targetUsername, node) => {
+  shareItem: async (targetUsername, node, path) => {
+    const payload = {
+      target: targetUsername,
+    };
+
+    if (path) {
+      payload.path = path;
+    }
+
+    if (node) {
+      payload.node = typeof node === 'string' ? node : JSON.stringify(node);
+    }
+
     const response = await fetch(`${API_BASE_URL}/share`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       credentials: 'include',
-      body: JSON.stringify({
-        target: targetUsername,
-        node: typeof node === 'string' ? node : JSON.stringify(node),
-      }),
+      body: JSON.stringify(payload),
     });
     
     return handleResponse(response);
