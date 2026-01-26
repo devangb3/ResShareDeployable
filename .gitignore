@@ -59,3 +59,4 @@ MODULE.bazel.lock
 .cursor/
 .claude/
 AGENTS.md
+qa-test.txt
