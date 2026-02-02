@@ -1,22 +1,47 @@
-// Use environment variable if available, otherwise fallback to localhost for development
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
+import { logger } from './logger';
 
-// Helper function to handle API responses
-const handleResponse = async (response) => {
-  const data = await response.json();
-  
-  if (!response.ok) {
-    console.log("Response not ok", data);
-    throw new Error(data.message || data.result || 'API request failed');
+const getApiBaseUrl = () => {
+  const url = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
+  return url.replace(/\/+$/, ''); // Remove trailing slashes
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
+if (!process.env.REACT_APP_API_BASE_URL && process.env.NODE_ENV === 'production') {
+  logger.warn('API Configuration', 'REACT_APP_API_BASE_URL not configured in production');
+}
+
+const handleResponse = async (response, skipAutoRedirect = false) => {
+  let data;
+  try {
+    data = await response.json();
+  } catch (error) {
+    throw new Error('Invalid server response');
   }
-  
+
+  if (!response.ok) {
+    logger.debug('API Error Response', { status: response.status, data });
+
+    const error = new Error(data.message || data.result || 'API request failed');
+    error.response = { status: response.status, data };
+
+    // Auto-redirect on 401 (session expired), but skip for signup/login endpoints
+    if (response.status === 401 && !skipAutoRedirect) {
+      if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+        logger.info('Session Expired', 'Redirecting to login');
+        window.location.href = '/login';
+      }
+    }
+
+    throw error;
+  }
+
   return data;
 };
 
-// Authentication APIs
 export const authAPI = {
   login: async (username, password) => {
-    console.log("Sending login request to", `${API_BASE_URL}/login`);
+    logger.api('POST', '/login', { username });
     const response = await fetch(`${API_BASE_URL}/login`, {
       method: 'POST',
       headers: {
@@ -25,11 +50,12 @@ export const authAPI = {
       credentials: 'include',
       body: JSON.stringify({ username, password }),
     });
-    
-    return handleResponse(response);
+
+    return handleResponse(response, true); // Skip auto-redirect for login errors
   },
 
   signup: async (username, password) => {
+    logger.api('POST', '/signup', { username });
     const response = await fetch(`${API_BASE_URL}/signup`, {
       method: 'POST',
       headers: {
@@ -37,8 +63,7 @@ export const authAPI = {
       },
       body: JSON.stringify({ username, password }),
     });
-    console.log("Signup response", response);
-    return handleResponse(response);
+    return handleResponse(response, true); // Skip auto-redirect for signup errors
   },
 
   logout: async () => {
@@ -59,12 +84,29 @@ export const authAPI = {
       credentials: 'include',
       body: JSON.stringify({ password }),
     });
-    
+
+    return handleResponse(response);
+  },
+
+  checkAuthStatus: async () => {
+    const response = await fetch(`${API_BASE_URL}/auth-status`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+
+    return handleResponse(response);
+  },
+
+  fetchSharedItems: async () => {
+    const response = await fetch(`${API_BASE_URL}/shared`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+
     return handleResponse(response);
   },
 };
 
-// File and Folder APIs
 export const fileAPI = {
   createFolder: async (folderPath) => {
     const response = await fetch(`${API_BASE_URL}/create-folder`, {
@@ -80,7 +122,7 @@ export const fileAPI = {
   },
 
   uploadFile: async (file, path, skipAiProcessing = false) => {
-    console.log('[API] uploadFile called with:', { path, skipAiProcessing, filename: file?.name, size: file?.size });
+    logger.api('POST', '/upload', { path, skipAiProcessing, filename: file?.name, size: file?.size });
     const sizeValidation = utils.validateFileSize(file, 1); // 1 MB limit
     if (!sizeValidation.isValid) {
       throw new Error(sizeValidation.error);
@@ -90,7 +132,6 @@ export const fileAPI = {
     formData.append('file', file);
     formData.append('path', path || '');
     formData.append('skip_ai_processing', skipAiProcessing.toString());
-    console.log('[API] FormData prepared skip_ai_processing=', skipAiProcessing.toString());
 
     const response = await fetch(`${API_BASE_URL}/upload`, {
       method: 'POST',
@@ -98,7 +139,7 @@ export const fileAPI = {
       body: formData,
     });
     const data = await handleResponse(response);
-    console.log('[API] Upload response received:', data);
+    logger.debug('Upload Response', data);
     return data;
   },
 
@@ -111,12 +152,30 @@ export const fileAPI = {
       credentials: 'include',
       body: JSON.stringify({ path, is_shared: isShared }),
     });
-    
+
     if (!response.ok) {
       const data = await response.json();
       throw new Error(data.message || 'Download failed');
     }
-    
+
+    return response;
+  },
+
+  downloadFolderAsZip: async (path, isShared = false) => {
+    const response = await fetch(`${API_BASE_URL}/download-zip`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({ path, is_shared: isShared }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.message || 'Download failed');
+    }
+
     return response;
   },
 
@@ -133,17 +192,26 @@ export const fileAPI = {
     return handleResponse(response);
   },
 
-  shareItem: async (targetUsername, node) => {
+  shareItem: async (targetUsername, node, path) => {
+    const payload = {
+      target: targetUsername,
+    };
+
+    if (path) {
+      payload.path = path;
+    }
+
+    if (node) {
+      payload.node = typeof node === 'string' ? node : JSON.stringify(node);
+    }
+
     const response = await fetch(`${API_BASE_URL}/share`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       credentials: 'include',
-      body: JSON.stringify({
-        target: targetUsername,
-        node: typeof node === 'string' ? node : JSON.stringify(node),
-      }),
+      body: JSON.stringify(payload),
     });
     
     return handleResponse(response);
@@ -339,8 +407,10 @@ export const utils = {
   },
 };
 
-export default {
+const api = {
   authAPI,
   fileAPI,
   utils,
-}; 
+};
+
+export default api; 

@@ -19,6 +19,7 @@ RUN apt-get update && apt-get install -y \
     git \
     ca-certificates \
     bzip2 \
+    jq \
     && rm -rf /var/lib/apt/lists/*
 
 # Set gcc-11 and g++-11 as default

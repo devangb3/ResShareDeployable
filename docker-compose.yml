@@ -26,7 +26,7 @@ services:
       - ipfs_cluster_data:/root/.ipfs-cluster
       # Persist vector database
       - vector_db:/app/backend/vector_db
-    restart: unless-stopped
+    restart: "no"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:5000/ && curl -f http://localhost:8080/api/v0/version && curl -f http://localhost:9094/api/v0/id"]
       interval: 30s
