@@ -69,7 +69,7 @@ const HomePage = () => {
 
   // Custom hooks
   const { snackbar, showSuccess, showError, closeSnackbar } = useSnackbar();
-  const { downloadFile, isDownloading } = useFileDownload(showError);
+  const { downloadFile } = useFileDownload(showError);
   const { menuAnchorEl, selectedItem, isMenuOpen, handleMenuOpen, handleMenuClose, clearSelection } = useItemContextMenu();
 
   useEffect(() => {

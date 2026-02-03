@@ -83,8 +83,25 @@ const FileExplorer = () => {
 
   // Custom hooks
   const { snackbar, showSuccess, showError, closeSnackbar } = useSnackbar();
-  const { downloadFile, isDownloading } = useFileDownload(showError);
+  const { downloadFile } = useFileDownload(showError);
   const { menuAnchorEl, selectedItem, isMenuOpen, handleMenuOpen, handleMenuClose, clearSelection } = useItemContextMenu();
+
+  const findNodeByPath = useCallback((root, path) => {
+    if (!path || path === '') return root;
+
+    const parts = path.split('/').filter(part => part !== '');
+    let current = root;
+
+    for (const part of parts) {
+      if (current.children && current.children[part]) {
+        current = current.children[part];
+      } else {
+        return null;
+      }
+    }
+
+    return current;
+  }, []);
 
   useEffect(() => {
     const path = location.pathname.replace('/explorer/', '').replace('/explorer', '');
@@ -106,7 +123,7 @@ const FileExplorer = () => {
       const node = findNodeByPath(rootData, path);
       setCurrentNode(node);
     }
-  }, [location.pathname, rootData, shareList]);
+  }, [location.pathname, rootData, shareList, findNodeByPath]);
 
   useEffect(() => {
     const refreshSharedItems = async () => {
@@ -121,23 +138,6 @@ const FileExplorer = () => {
     refreshSharedItems();
   }, [refreshShareList, location.pathname]);
 
-  const findNodeByPath = useCallback((root, path) => {
-    if (!path || path === '') return root;
-
-    const parts = path.split('/').filter(part => part !== '');
-    let current = root;
-
-    for (const part of parts) {
-      if (current.children && current.children[part]) {
-        current = current.children[part];
-      } else {
-        return null;
-      }
-    }
-
-    return current;
-  }, []);
-
   const getPathParts = useCallback(() => {
     if (!currentPath) return [];
     return currentPath.split('/').filter(part => part !== '');
@@ -149,15 +149,33 @@ const FileExplorer = () => {
     navigate(`/explorer/${newPath}`);
   }, [getPathParts, navigate]);
 
+  const handleDownloadFile = useCallback(async (fileName) => {
+    try {
+      const filePath = currentPath ? `${currentPath}/${fileName}` : fileName;
+
+      // Check if we're in a shared folder by looking at the path
+      const pathParts = currentPath.split('/');
+      const isShared = pathParts.length > 0 && shareList && shareList[pathParts[0]];
+
+      // Call downloadFile with (path, filename, isShared)
+      const result = await downloadFile(filePath, fileName, isShared);
+      if (result.success && !result.cancelled) {
+        showSuccess(`Downloaded "${fileName}" successfully`);
+      }
+    } catch (error) {
+      showError(getErrorMessage(error, `Failed to download "${fileName}"`));
+    }
+  }, [currentPath, shareList, downloadFile, showSuccess, showError]);
+
   const handleItemClick = useCallback((itemName, item) => {
     if (item.is_folder) {
       const newPath = currentPath ? `${currentPath}/${itemName}` : itemName;
       navigate(`/explorer/${newPath}`);
     } else {
       // Handle file click (preview or download)
-      handleDownloadFile(itemName, item);
+      handleDownloadFile(itemName);
     }
-  }, [currentPath, navigate]);
+  }, [currentPath, navigate, handleDownloadFile]);
 
   const handleConfirmCreateFolder = async (folderName) => {
     const sanitized = sanitizeFileName(folderName);
@@ -295,24 +313,6 @@ const FileExplorer = () => {
   const handleUploadCancel = () => {
     setUploadDialogOpen(false);
     setSelectedFiles([]);
-  };
-
-  const handleDownloadFile = async (fileName, item) => {
-    try {
-      const filePath = currentPath ? `${currentPath}/${fileName}` : fileName;
-
-      // Check if we're in a shared folder by looking at the path
-      const pathParts = currentPath.split('/');
-      const isShared = pathParts.length > 0 && shareList && shareList[pathParts[0]];
-
-      // Call downloadFile with (path, filename, isShared)
-      const result = await downloadFile(filePath, fileName, isShared);
-      if (result.success && !result.cancelled) {
-        showSuccess(`Downloaded "${fileName}" successfully`);
-      }
-    } catch (error) {
-      showError(getErrorMessage(error, `Failed to download "${fileName}"`));
-    }
   };
 
   const handleDownloadFromMenu = async () => {

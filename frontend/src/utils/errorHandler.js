@@ -140,9 +140,11 @@ export const getBackendErrorMessage = (errorCode) => {
   return BackendErrorMessages[errorCode] || ErrorMessages.UNKNOWN_ERROR;
 };
 
-export default {
+const errorHandler = {
   getErrorMessage,
   getBackendErrorMessage,
   createContextualError,
-  ErrorMessages
+  ErrorMessages,
 };
+
+export default errorHandler;
